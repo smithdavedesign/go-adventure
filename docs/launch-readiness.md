@@ -65,10 +65,10 @@ Nothing here is blocked on more application code — the platform is built and w
 | ~~A1~~ | ~~**Supabase** project~~ | ✅ **Done** — project `mhftgnjjqfceojmxomls` (us-west-2). All 7 migrations applied, seed corpus live. `DATABASE_URL` (pooler) + `DIRECT_URL` set in `.env`. | — | — | — |
 | A2 | **Vercel** project | vercel.com | Deploy target; set all env vars in the dashboard | Public hosting, ISR, preview deploys | ~20 min | Free→$20 |
 | A3 | **Cloudflare R2** bucket | dash.cloudflare.com | `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME`, `R2_PUBLIC_URL` | Real media + raw source captures (replaces local `.ingestion-raw`) | ~20 min | ~$0–5 |
-| A4 | **NPS API key** | nps.gov/subjects/developer | `NPS_API_KEY` | Live NPS ingestion (M5 already built) | ~5 min | Free |
-| A5 | **Recreation.gov (RIDB) key** | ridb.recreation.gov | `RECREATION_GOV_API_KEY` | Live RIDB ingestion (built) | ~10 min | Free |
-| A6 | **Google OAuth client** | console.cloud.google.com → OAuth consent + credentials | `AUTH_GOOGLE_ID`, `AUTH_GOOGLE_SECRET`; redirect URI `https://<domain>/api/auth/callback/google` | Real Google sign-in (dev test-login already works) | ~30 min | Free |
-| A7 | **`AUTH_SECRET`** (prod) | `openssl rand -base64 32` | `AUTH_SECRET` in Vercel | Session signing in production | ~1 min | Free |
+| ~~A4~~ | ~~**NPS API key**~~ | ✅ **Done** — `NPS_API_KEY` set locally + Vercel. Smoke test: `npm run test:smoke`. Live ingest verified: 50 records drafted, 0 dead-lettered. | — | — | — |
+| ~~A5~~ | ~~**Recreation.gov (RIDB) key**~~ | ✅ **Done** — `RECREATION_GOV_API_KEY` set locally + Vercel. Smoke test: `npm run test:smoke`. | — | — | — |
+| ~~A6~~ | ~~**Google OAuth client**~~ | ✅ **Done** — `AUTH_GOOGLE_ID` + `AUTH_GOOGLE_SECRET` set. OAuth flow verified locally (Google sign-in screen reached). Add `https://<prod-domain>/api/auth/callback/google` to Google Console for production. | — | — | — |
+| ~~A7~~ | ~~**`AUTH_SECRET`** (prod)~~ | ✅ **Done** — generated and set in `.env` + Vercel. | — | — | — |
 | A8 | **Gemini key** *(optional)* | aistudio.google.com or Vertex | `GEMINI_API_KEY` | Live AI drafting (mock works without it) — **hold until ADR-0007 terms/cost review** | ~10 min | usage-based |
 | A9 | **Sentry** project | sentry.io | `SENTRY_DSN` | Error alerting (call sites already wired) | ~15 min | Free→$26 |
 | A10 | **GTM + GA4 + Search Console** | tagmanager / analytics / search.google.com | `NEXT_PUBLIC_GTM_ID`, `NEXT_PUBLIC_GA4_ID` | Consent-gated analytics (event dictionary already built) | ~45 min | Free |

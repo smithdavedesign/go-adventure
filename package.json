@@ -9,6 +9,7 @@
     "lint": "eslint",
     "typecheck": "tsc --noEmit",
     "test": "vitest run",
+    "test:smoke": "vitest run src/platform/integrations/smoke.test.ts --reporter=verbose",
     "test:watch": "vitest",
     "test:e2e": "playwright test",
     "db:seed": "prisma db seed",
