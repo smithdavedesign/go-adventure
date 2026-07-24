@@ -2,7 +2,7 @@
 
 **Version:** 1.1 (aligned with PRD v1.1)  
 **Status:** As-built — the Phase 1 platform described here is implemented (roadmap M0–M11). See [ROADMAP.md](ROADMAP.md) and [launch-readiness.md](launch-readiness.md).  
-**Last updated:** 2026-07-23
+**Last updated:** 2026-07-24
 
 > **Phase 1 vs Phase 2:** Postgres + PostGIS is the canonical Phase 1 store. Search in Phase 1 uses Postgres FTS + `pg_trgm`. Meilisearch, pgvector, and Redis are deferred until their documented graduation criteria are met. Every diagram marks deferred components explicitly.
 
@@ -36,20 +36,20 @@ C4Context
 
     System_Ext(nps, "NPS API", "National park data — trails, fees, permits, descriptions")
     System_Ext(recreation, "Recreation.gov", "Permit systems and campsite inventory")
-    System_Ext(osm, "OpenStreetMap / Overpass", "Trail geometry, elevation, POIs")
-    System_Ext(openmeteo, "Open-Meteo", "Free weather data. No API key required.")
-    System_Ext(usgs, "USGS", "Elevation and topography data")
+    System_Ext(osm, "OpenStreetMap / Overpass", "Trail geometry and tags")
+    System_Ext(openmeteo, "Open-Meteo", "Forecast snapshots + elevation enrichment")
+    System_Ext(wikimedia, "Wikimedia Commons / Wikipedia REST", "Hero media with licence + creator metadata")
     System_Ext(gemini, "Google Gemini Flash", "AI-assisted content gap-filling and summary generation")
     System_Ext(google_auth, "Google OAuth", "User authentication")
-    System_Ext(maptiles, "OpenFreeMap / OSM Tiles", "Raster and vector map tiles")
+    System_Ext(maptiles, "MapTiler", "Contracted map tile provider")
     System_Ext(gtm, "Google Tag Manager / GA4 / GSC", "Analytics and SEO monitoring")
 
     Rel(user, app, "Discovers destinations", "HTTPS / Browser")
     Rel(app, nps, "Ingests park + trail data", "REST API")
     Rel(app, recreation, "Ingests permit data", "REST API")
     Rel(app, osm, "Ingests trail geometry", "Overpass API")
-    Rel(app, openmeteo, "Fetches weather forecasts", "REST API")
-    Rel(app, usgs, "Fetches elevation data", "REST API")
+    Rel(app, openmeteo, "Fetches forecasts + elevation", "REST API")
+    Rel(app, wikimedia, "Fetches hero media + rights metadata", "REST API")
     Rel(app, gemini, "Generates AI summaries + tags", "REST API")
     Rel(app, google_auth, "Authenticates users", "OAuth 2.0 / OIDC")
     Rel(app, maptiles, "Renders map tiles", "HTTPS")
@@ -364,8 +364,8 @@ flowchart LR
         NPS[NPS API\nnational parks + alerts]
         OSM[OpenStreetMap\nOverpass API\ntrail geometry]
         REC[Recreation.gov\npermits + campsites]
-        USGS[USGS\nelevation data]
-        METEO[Open-Meteo\nweather snapshots]
+        METEO[Open-Meteo\nweather snapshots + elevation]
+        WIKI[Wikimedia\nhero media + rights metadata]
     end
 
     subgraph Pipeline["Ingestion Pipeline (GitHub Actions — idempotent, resumable)"]
@@ -373,6 +373,7 @@ flowchart LR
         VALIDATE[Validate schema\nZod + PostGIS geometry\nlicence + rights check]
         NORM[Normalize\nMap to canonical fields\nAttach source ID + checksum]
         STORE[Write SourceRecord\n+ canonical draft\nto Postgres]
+        SNAP[Write AlertSnapshot\n+ ForecastSnapshot\n(expiring dynamic data)]
         AICHECK{Editorial draft\nneeded?}
         AI[Gemini Flash\ndraft summary + tags\nfrom source packet only\nnot factual attributes]
         AIMARK[Mark origin=ai_assisted\nattach prompt version\n+ source packet hash]
@@ -390,12 +391,13 @@ flowchart LR
     NPS --> FETCH
     OSM --> FETCH
     REC --> FETCH
-    USGS --> FETCH
     METEO --> FETCH
+    WIKI --> FETCH
 
     FETCH --> VALIDATE
     VALIDATE --> NORM
     NORM --> STORE
+    STORE --> SNAP
     STORE --> AICHECK
     AICHECK -->|sparse editorial content| AI
     AICHECK -->|source complete| QUEUE
@@ -406,6 +408,7 @@ flowchart LR
     PUBLISH --> OUTBOX
     FETCH --> R2
     STORE --> PG
+    SNAP --> PG
     OUTBOX --> PG
 ```
 
@@ -499,7 +502,7 @@ sortable: score, publishedAt
 
 ## 8. Service Boundaries
 
-Bounded domains within the monorepo. Explicit import rules prevent coupling and make Phase 3 extraction straightforward. The tree below is the **as-built** structure; UI routes live under `src/app/` and import the domain modules. Empty scaffolding is not kept — a domain folder is created when it first holds code (Phase 2 domains like reviews/subscriptions/media are not created yet).
+Bounded domains within the monorepo. Explicit import rules prevent coupling and make Phase 3 extraction straightforward. The tree below is the **as-built** structure; UI routes live under `src/app/` and import the domain modules. Empty scaffolding is not kept — a domain folder is created when it first holds code (Phase 2 domains like reviews/subscriptions are still deferred).
 
 ```
 /src
@@ -510,11 +513,13 @@ Bounded domains within the monorepo. Explicit import rules prevent coupling and 
     SafetyDisclosure.tsx
 
   /platform         ← Platform Domain (all write paths for data operations)
-    ingestion/        pipeline + NPS/recgov adapters + raw store + checksum
+        ingestion/        pipeline + NPS/recgov/osm adapters + raw store + checksum
     outbox/           emit + processor
     content-revisions/ fact precedence + freshness/expiry
     publishing/       draft-validation schema + publish/unpublish workflow
     forecasts/        Open-Meteo client + expiring snapshots
+        alerts/           NPS alerts client + AlertSnapshot freshness gating
+        media/            Wikimedia enrichment + rights/credit normalization
     ai/               provider interface + Gemini/mock + PII-guarded packets
     analytics/        event dictionary + consent-gated track
     security/         rate limiter

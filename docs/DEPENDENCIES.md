@@ -4,6 +4,13 @@ Things only you can do — external accounts, credentials, and business/legal de
 
 Once you have a value, it goes in `.env` (copy from [`.env.example`](../.env.example) — never commit `.env`, it's gitignored).
 
+## Current source mix (for planning)
+
+- **5 live sources** in the current platform/source registry view.
+- **3 keyless sources**: OpenStreetMap/Overpass, Open-Meteo (free tier), Wikimedia.
+- **2 keyed sources**: NPS (`NPS_API_KEY`), MapTiler (`NEXT_PUBLIC_MAPTILER_KEY`).
+- **1 optional key currently wired but not required for the active corpus**: Recreation.gov (`RECREATION_GOV_API_KEY`).
+
 ## Not needed yet (M1–M3)
 
 Nothing. We're running entirely on local Docker Postgres+PostGIS (`docker-compose.yml`) — no account, no API key, no signup.
@@ -28,7 +35,7 @@ Nothing. We're running entirely on local Docker Postgres+PostGIS (`docker-compos
 
 - **Recreation.gov / RIDB API key** — developer signup at `ridb.recreation.gov`. Goes in `.env` as `RECREATION_GOV_API_KEY`.
 - **Open-Meteo commercial plan** — only if we exceed their free non-commercial tier; check `open-meteo.com`'s pricing before this becomes a paid dependency. `OPEN_METEO_API_KEY` in `.env` only applies to the paid tier.
-- USGS and OpenStreetMap/Overpass are expected to stay keyless at our volume — no action unless ingestion hits a rate limit.
+- OpenStreetMap/Overpass and Wikimedia are keyless at current volume; no signup action unless rate/terms constraints change.
 - Each of these also needs its own source-registry entry (owner, licence, attribution, refresh cadence) per [ADR-0006](adr/0006-source-licences-and-refresh-contracts.md) before use, same as NPS.
 
 ## Before M5/M6 — media storage
@@ -37,7 +44,7 @@ Nothing. We're running entirely on local Docker Postgres+PostGIS (`docker-compos
 
 ## Decision needed, not yet a signup task
 
-- **Map tile provider** — [ADR-0005](adr/0005-map-tile-provider.md) is undecided (MapLibre GL is just the renderer; PRD explicitly disallows depending on shared public OSM tile infrastructure in production). M2's map view uses a free/keyless demo tile source for local dev only — that placeholder is not a production answer. When you're ready to pick (candidates worth comparing: MapTiler, Stadia Maps, Mapbox, or a self-hosted tile stack), that's when this becomes a signup task.
+- **Map tile provider follow-through** — [ADR-0005](adr/0005-map-tile-provider.md) is accepted (MapTiler). The remaining work is quota/cost monitoring and keeping attribution visible when map styles change.
 
 ## Before deploy / beta
 

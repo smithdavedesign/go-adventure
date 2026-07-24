@@ -2,7 +2,7 @@
 
 > The "Skyscanner Explore" experience for outdoor adventure. Users come to discover *where* to go, not just to research a place they've already chosen.
 
-**Status:** The Phase 1 platform is built end-to-end (engineering milestones M0–M11). Discovery + search with the binding zero-result relaxation, a provenance-backed content model, an ingestion pipeline, editorial admin + publishing, Google auth + saved destinations, AI-assisted drafting, and expiring weather data — 80 unit tests + 12 E2E green. What's left is real content, external accounts, and human/legal sign-off, not more code — see [docs/launch-readiness.md](docs/launch-readiness.md). Current content is fabricated seed data. See [Status](#status) below.
+**Status:** The Phase 1 platform is built end-to-end (engineering milestones M0–M11). Discovery + search with the binding zero-result relaxation, a provenance-backed content model, ingestion + editorial publishing, Google auth + saved destinations, AI-assisted drafting, and expiring forecast/alert snapshots are live — 80 unit tests + 12 E2E green. The current source mix is 5 live sources (3 keyless, 2 keyed). What's left is real content completion, legal sign-off, and operational ownership — see [docs/launch-readiness.md](docs/launch-readiness.md). See [Status](#status) below.
 
 The name "Travel Roamer" is a candidate pending domain and trademark clearance (see the PRD's Product Name section) — it's used here as the working name, not a final decision.
 
@@ -33,7 +33,8 @@ All content is **fabricated seed data** for building the UI — nothing is sourc
 - [`docs/launch-readiness.md`](docs/launch-readiness.md) — every PRD launch gate walked, with what's built vs. what a human does next.
 - [`docs/security.md`](docs/security.md) — security & observability: built controls vs. parked operational items.
 - [`docs/DEPENDENCIES.md`](docs/DEPENDENCIES.md) — external setup only you can do (accounts, API keys), by milestone.
-- [`docs/adr/`](docs/adr/) — Architecture Decision Records. ADR-0001, 0002, 0003 accepted; 0006/0007/0008 partial; the rest open — see the [ADR tracker](docs/ROADMAP.md#adr-tracker).
+- [`docs/source-registry.md`](docs/source-registry.md) — live source inventory, attribution render sites, and key/keyless status.
+- [`docs/adr/`](docs/adr/) — Architecture Decision Records. ADR-0001, 0002, 0003, 0005 accepted; 0006/0007/0008 partial; the rest open — see the [ADR tracker](docs/ROADMAP.md#adr-tracker).
 
 ## Getting started
 
@@ -86,6 +87,7 @@ Full rationale for each choice is in [`ARCHITECTURE.md` → Key Technical Decisi
 | [Launch readiness](docs/launch-readiness.md) | Every PRD launch gate walked — built vs. blocking, with owners and next steps. |
 | [Security](docs/security.md) | Security & observability controls: built vs. parked operational items. |
 | [Dependencies](docs/DEPENDENCIES.md) | External setup only you can do — accounts, API keys, legal/business items — by milestone. |
+| [Source registry](docs/source-registry.md) | Live external source inventory, licensing/attribution obligations, and render sites. |
 
 The PRD's Documentation section anticipates a fuller `/docs` set (`deployment.md`, `privacy.md`, etc.) — those are added as each area is actually built, per the roadmap, rather than stubbed out in advance.
 

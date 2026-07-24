@@ -19,13 +19,13 @@ Every published destination/trail must pass rubric, source, attribution, rights,
 
 ### 2. Source / legal — 🟡 owner: Product + legal reviewer
 Source registry complete; commercial terms, OSM compliance, media rights, notices reviewed.
-- 🟢 Source registry model + enforced-enabled ingestion; NPS and Recreation.gov registry entries in code with licence/attribution snapshots per record ([ADR-0006](adr/0006-source-licences-and-refresh-contracts.md)).
-- 🔴 **Blocking:** human legal review of each source's commercial-use terms and per-asset media rights; OSM/ODbL attribution compliance once map tiles are wired; the map tile provider decision ([ADR-0005](adr/0005-map-tile-provider.md)).
+- 🟢 Source registry model + enforced-enabled ingestion; live source contracts captured with licence/attribution snapshots, and attribution is rendered in-product (map/footer credits, hero media credit, weather provenance) ([ADR-0006](adr/0006-source-licences-and-refresh-contracts.md), [source-registry.md](source-registry.md)).
+- 🔴 **Blocking:** human legal review/sign-off of each source's commercial-use terms and per-asset media rights, plus periodic re-review ownership.
 
-### 3. Safety — 🟡 owner: Content + engineering
+### 3. Safety — 🟡 (green-leaning) owner: Content + engineering
 Official alert/permit links work; stale-data behaviour, sensitive-location policy, disclosures tested.
-- 🟢 Permit info always links to the official land manager; safety + data-freshness disclosure on every destination/trail page; forecast cards carry provenance and are dropped when stale; dynamic data expires and is never shown stale (verified).
-- 🔴 **Blocking:** real NPS alert/closure ingestion (needs the key + a monitored refresh SLO); a written sensitive-location policy; human verification that real permit links resolve.
+- 🟢 Permit info links to official land-manager pages; safety + data-freshness disclosure appears on destination/trail pages; forecast and alert snapshots are freshness-gated (`ForecastSnapshot`/`AlertSnapshot`) and are dropped when stale.
+- 🟡 **Remaining:** written sensitive-location policy, monitored alert-refresh SLO/runbook, and periodic human spot-checks that official permit links still resolve.
 
 ### 4. Data operations — 🟢/🟡 owner: Engineering lead
 Ingestion, retries/DLQ, outbox, reconciliation, data-health dashboard, manual recovery runbook exercised.
@@ -47,10 +47,10 @@ Usability sessions show target users understand *why* a result fits and can reac
 - 🟢 The "why this fits" surfacing (facets, relaxation transparency, official links) is built and clickable.
 - 🔴 **Blocking:** actual usability sessions with real users — a research activity, not code, and it needs real content (gate 1) to be meaningful.
 
-### 8. SEO — 🟢/🟡 owner: Growth/content lead
+### 8. SEO — 🟢/🟡 (green-leaning) owner: Growth/content lead
 Only approved canonical pages index; metadata, sitemaps, structured data, noindex rules validated.
-- 🟢 `robots.ts` (disallows admin/api/account/saved/signin), `sitemap.ts` (published canonical pages only — drafts have no URL), per-route `noindex` on non-content pages, JSON-LD with only real on-page facts (no manufactured ratings/availability), locale-aware `<title>` templates.
-- 🟡 **Remaining:** Search Console verification, `hreflang` once `es` ships, Open Graph images from cleared media (needs real media), validation against the real corpus.
+- 🟢 `robots.ts` (disallows admin/api/account/saved/signin), `sitemap.ts` (published canonical pages only — drafts have no URL), per-route `noindex` on non-content pages, JSON-LD with only real on-page facts, locale-aware `<title>` templates, and Open Graph images sourced from cleared hero media when present.
+- 🟡 **Remaining:** Search Console verification, `hreflang` once `es` ships, and SEO validation over the final human-curated launch corpus.
 
 ## What's needed from you
 
@@ -72,13 +72,13 @@ Nothing here is blocked on more application code — the platform is built and w
 | A8 | **Gemini key** *(optional)* | aistudio.google.com or Vertex | `GEMINI_API_KEY` | Live AI drafting (mock works without it) — **hold until ADR-0007 terms/cost review** | ~10 min | usage-based |
 | A9 | **Sentry** project | sentry.io | `SENTRY_DSN` | Error alerting (call sites already wired) | ~15 min | Free→$26 |
 | A10 | **GTM + GA4 + Search Console** | tagmanager / analytics / search.google.com | `NEXT_PUBLIC_GTM_ID`, `NEXT_PUBLIC_GA4_ID` | Consent-gated analytics (event dictionary already built) | ~45 min | Free |
-| A11 | **Map tile provider** | see B1 | `MAP_TILES_API_KEY` (+ style URL) | Production maps (dev uses a demo source) | ~20 min | Free tier→$ |
+| ~~A11~~ | ~~**Map tile provider**~~ | ✅ **Done** — MapTiler selected and wired (`NEXT_PUBLIC_MAPTILER_KEY`; MapLibre fallback remains local-dev only). | — | — | — |
 
 > After A1–A2 exist, hand me the connection string and I'll run migrations + seed against Supabase and set up the Vercel config. After A4–A6/A9–A11, I wire each into the app.
 
 ### B. Decisions only you can make
 
-- **B1. Map tile provider** ([ADR-0005](adr/0005-map-tile-provider.md), still open). The PRD forbids depending on public OSM tiles in production. Compare **MapTiler**, **Stadia Maps**, **Mapbox**, or self-hosting on cost/volume/terms, then create the account (A11). *I can draft the ADR comparison if you want.*
+- **B1. Map tile provider follow-through** ([ADR-0005](adr/0005-map-tile-provider.md), accepted). Keep quota/cost monitoring and verify attribution remains visible after style or provider changes.
 - **B2. Product name + domain.** "Travel Roamer" is a candidate pending **trademark clearance** and domain purchase (`travel-roamer.com` preferred). Business/legal call.
 - **B3. Launch regions + the destination shortlist.** Which "deliberately limited set of launch regions," and the specific 25–50 destinations. Drives the whole corpus effort.
 - **B4. Cost budget** for paid services ([ADR-0010](adr/0010-commercial-service-cost-controls.md)) — a costed operating plan is a PRD gate before beta.
@@ -115,6 +115,6 @@ This is the single biggest blocker and is human by PRD design. The tooling is bu
 
 - Wire **ISR/static generation** for published pages (retire the `force-dynamic` shortcut) — needs A1 or a CI DB.
 - Fold **admin auth into Auth.js `is_admin`**, retiring the interim password gate — needs A6 to fully test, but buildable now.
-- Build the **OSM/Overpass + USGS** trail adapters (the two parked sources).
+- Continue the **trail/media enrichment loop** (remaining parks + spot checks) and optionally add USGS as a secondary elevation source if Open-Meteo limits become a bottleneck.
 - Draft the **ADR-0005 tile-provider comparison** and the **RLS SQL policies** for E3.
 - Add **axe accessibility automation + Lighthouse CI** to the pipeline.
