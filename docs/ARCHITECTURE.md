@@ -1,7 +1,7 @@
 # Architecture — Travel Roamer
 
 **Version:** 1.1 (aligned with PRD v1.1)  
-**Status:** Draft  
+**Status:** As-built — the Phase 1 platform described here is implemented (roadmap M0–M11). See [ROADMAP.md](ROADMAP.md) and [launch-readiness.md](launch-readiness.md).  
 **Last updated:** 2026-07-23
 
 > **Phase 1 vs Phase 2:** Postgres + PostGIS is the canonical Phase 1 store. Search in Phase 1 uses Postgres FTS + `pg_trgm`. Meilisearch, pgvector, and Redis are deferred until their documented graduation criteria are met. Every diagram marks deferred components explicitly.
@@ -322,7 +322,7 @@ flowchart TD
     BROAD --> F
 
     F --> G{User action}
-    G -->|Search query| H[Meilisearch results\ntypo-tolerant · faceted]
+    G -->|Search query| H[Postgres FTS + pg_trgm\ntypo-tolerant · faceted]
     G -->|Click card| I[Destination page]
     H --> I
 
@@ -499,48 +499,44 @@ sortable: score, publishedAt
 
 ## 8. Service Boundaries
 
-Four bounded domains within the monorepo. Explicit import rules prevent coupling and make Phase 3 extraction straightforward.
+Bounded domains within the monorepo. Explicit import rules prevent coupling and make Phase 3 extraction straightforward. The tree below is the **as-built** structure; UI routes live under `src/app/` and import the domain modules. Empty scaffolding is not kept — a domain folder is created when it first holds code (Phase 2 domains like reviews/subscriptions/media are not created yet).
 
 ```
 /src
   /content          ← Content Domain (read-only published data)
-    destinations/
-    trails/
-    media/
-    search/
+    destinations/     queries + card/hero/map/forecast components
+    trails/           queries
+    search/           filters, FTS search, zero-result relaxation, filter bar
+    SafetyDisclosure.tsx
 
   /platform         ← Platform Domain (all write paths for data operations)
-    sources/          source registry + SourceRecord
-    ingestion/        ingestion workers + validation
-    outbox/           outbox processor + event types
-    content-revisions/ ContentRevision + FactAssertion
-    permits/          PermitRequirement
-    forecasts/        ForecastSnapshot
+    ingestion/        pipeline + NPS/recgov adapters + raw store + checksum
+    outbox/           emit + processor
+    content-revisions/ fact precedence + freshness/expiry
+    publishing/       draft-validation schema + publish/unpublish workflow
+    forecasts/        Open-Meteo client + expiring snapshots
+    ai/               provider interface + Gemini/mock + PII-guarded packets
+    analytics/        event dictionary + consent-gated track
+    security/         rate limiter
+    observability/    error-reporting entry point
 
   /admin            ← Admin Domain (editorial interface)
-    dashboard/        data-health dashboard
-    destinations/     destination editor + publish actions
-    sources/          source record viewer
-    revisions/        revision history + approval queue
-    media/            media approval queue
+    queries.ts        dashboard / review-queue / sources reads
+                      (UI routes live in src/app/admin/**)
 
   /user             ← User Domain
-    auth/
-    saved/
-    reviews/          Phase 2 — disabled at launch
-    subscriptions/    Phase 2 — disabled at launch
-    profiles/
+    auth/             Auth.js config, actions, interim admin session
+    saved/            saved-destination queries, actions, SaveControl
+    profiles/         account export + deletion
 
   /shared           ← Shared
-    types/
-    utils/
-    config/
+    types/  ui/  utils/  config/
 ```
 
 **Import rules:**
 - `/content` reads published records only. Never imports from `/user`, `/platform`, or `/admin`.
 - `/platform` owns all write paths. Never imports from `/user`.
-- `/admin` may import from `/content` and `/platform`. All routes protected by `is_admin` middleware.
+- `/admin` may import from `/content` and `/platform`. Routes gated by the admin session (interim password gate; Auth.js `is_admin` plumbing ready — see ROADMAP M6/M7).
 - `/user` may reference content IDs but never mutates editorial records.
 
 ---
