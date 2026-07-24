@@ -11,9 +11,5 @@ export default defineConfig({
   },
   datasource: {
     url: process.env["DATABASE_URL"],
-    // Poolers (Supabase pgbouncer) can't run migrations — those go over the
-    // DIRECT (unpooled) connection. The app runtime uses the pooled DATABASE_URL.
-    // Locally there's no pooler, so DIRECT_URL falls back to DATABASE_URL.
-    directUrl: process.env["DIRECT_URL"] ?? process.env["DATABASE_URL"],
   },
 });
