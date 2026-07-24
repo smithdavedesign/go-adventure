@@ -67,9 +67,17 @@ export class NpsAdapter implements SourceAdapter {
       );
     }
     const params = new URLSearchParams({ api_key: this.apiKey, limit: "50" });
-    if (this.parkCodes.length) params.set("parkCode", this.parkCodes.join(","));
+    // NPS's parkCode filter expects RAW commas between codes. URLSearchParams
+    // would encode them to %2C, which NPS does not split — the multi-code filter
+    // then matches only the first code. Append it ourselves with raw commas.
+    // Codes are alphanumeric, so per-code encoding is a safe no-op.
+    const parkCodeParam = this.parkCodes.length
+      ? `&parkCode=${this.parkCodes.map(encodeURIComponent).join(",")}`
+      : "";
 
-    const res = await fetch(`${NPS_API_BASE}/parks?${params.toString()}`);
+    const res = await fetch(
+      `${NPS_API_BASE}/parks?${params.toString()}${parkCodeParam}`,
+    );
     if (!res.ok) {
       throw new Error(`NPS API responded ${res.status} ${res.statusText}`);
     }

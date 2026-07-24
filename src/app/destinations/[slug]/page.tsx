@@ -100,7 +100,6 @@ export default async function DestinationPage({
     <main>
       <script
         type="application/ld+json"
-        // eslint-disable-next-line react/no-danger
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
       {/* Hero ≥ 60% viewport height on desktop (PRD Design Principles). */}
