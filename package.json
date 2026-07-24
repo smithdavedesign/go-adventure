@@ -17,7 +17,9 @@
     "ingest:nps": "tsx src/platform/ingestion/runner.ts",
     "forecasts:refresh": "tsx src/platform/forecasts/runner.ts",
     "enrich:fees": "tsx scripts/enrich-nps-fees.ts",
+    "enrich:media": "tsx scripts/enrich-media-wikimedia.ts",
     "alerts:refresh": "tsx src/platform/alerts/runner.ts",
+    "ingest:trails": "tsx src/platform/ingestion/osm/runner.ts",
     "postinstall": "prisma generate"
   },
   "dependencies": {

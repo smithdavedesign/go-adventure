@@ -27,7 +27,7 @@ const csp = [
   // with per-request nonces during CSP hardening.
   scriptSrc,
   "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob: https://demotiles.maplibre.org https://*.basemaps.cartocdn.com https://api.maptiler.com https://*.maptiler.com",
+  "img-src 'self' data: blob: https://demotiles.maplibre.org https://*.basemaps.cartocdn.com https://api.maptiler.com https://*.maptiler.com https://upload.wikimedia.org",
   "connect-src 'self' https://demotiles.maplibre.org https://api.maptiler.com https://*.maptiler.com https://api.open-meteo.com https://accounts.google.com",
   "font-src 'self' data:",
 ].join("; ");

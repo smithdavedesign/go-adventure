@@ -84,6 +84,10 @@ export type DestinationCard = {
   tags: string[];
   location: Coordinates | null;
   heroAlt: string | null;
+  /** Real hero image URL (Wikimedia), or null to fall back to the gradient. */
+  heroImageUrl: string | null;
+  /** Required photo credit for a licensed hero image. */
+  heroCredit: string | null;
 };
 
 export type TrailSummary = {

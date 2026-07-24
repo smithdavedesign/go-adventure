@@ -22,6 +22,8 @@ export function DestinationCard({ destination }: { destination: DestinationCardD
     name,
     label,
     heroAlt,
+    heroImageUrl,
+    heroCredit,
     difficulty,
     tripLength,
     activities,
@@ -39,6 +41,8 @@ export function DestinationCard({ destination }: { destination: DestinationCardD
       <HeroPlaceholder
         slug={slug}
         alt={heroAlt}
+        imageUrl={heroImageUrl}
+        credit={heroCredit}
         className="aspect-[4/3] w-full transition-transform duration-300 group-hover:scale-[1.02]"
       >
         {label && (

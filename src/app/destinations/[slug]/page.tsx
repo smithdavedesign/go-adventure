@@ -36,6 +36,13 @@ export async function generateMetadata({
   return {
     title: destination.name,
     description: destination.summary ?? undefined,
+    openGraph: destination.heroImageUrl
+      ? {
+          title: destination.name,
+          description: destination.summary ?? undefined,
+          images: [{ url: destination.heroImageUrl }],
+        }
+      : undefined,
   };
 }
 
@@ -57,6 +64,8 @@ export default async function DestinationPage({
     name,
     label,
     heroAlt,
+    heroImageUrl,
+    heroCredit,
     summary,
     activities,
     bestMonths,
@@ -109,7 +118,13 @@ export default async function DestinationPage({
         dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
       />
       {/* Hero ≥ 60% viewport height on desktop (PRD Design Principles). */}
-      <HeroPlaceholder slug={slug} alt={heroAlt} className="h-[45vh] sm:h-[60vh]">
+      <HeroPlaceholder
+        slug={slug}
+        alt={heroAlt}
+        imageUrl={heroImageUrl}
+        credit={heroCredit}
+        className="h-[45vh] sm:h-[60vh]"
+      >
         <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent p-6 sm:p-10">
           <div className="mx-auto max-w-6xl">
             {label && (

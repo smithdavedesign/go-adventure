@@ -105,7 +105,9 @@ export async function listPublishedDestinations(
     where: toWhere(filters, searchIds),
     // Keyword results keep FTS rank order (applied below); otherwise A→Z.
     orderBy: searchIds ? undefined : { name: "asc" },
-    include: { heroAsset: { select: { altText: true } } },
+    include: {
+      heroAsset: { select: { altText: true, originalUrl: true, creatorCredit: true } },
+    },
   });
 
   // Reorder to the search ranking when a keyword is active.
@@ -132,6 +134,8 @@ export async function listPublishedDestinations(
     tags: r.tags,
     location: points.get(r.id) ?? null,
     heroAlt: r.heroAsset?.altText ?? null,
+    heroImageUrl: r.heroAsset?.originalUrl ?? null,
+    heroCredit: r.heroAsset?.creatorCredit ?? null,
   }));
 }
 
@@ -141,7 +145,7 @@ export async function getDestinationBySlug(
   const row = await prisma.destination.findFirst({
     where: { slug, status: "published" },
     include: {
-      heroAsset: { select: { altText: true } },
+      heroAsset: { select: { altText: true, originalUrl: true, creatorCredit: true } },
       trails: {
         where: { trail: { status: "published" } },
         orderBy: { editorialOrder: "asc" },
@@ -188,6 +192,8 @@ export async function getDestinationBySlug(
     tags: row.tags,
     location: points.get(row.id) ?? null,
     heroAlt: row.heroAsset?.altText ?? null,
+    heroImageUrl: row.heroAsset?.originalUrl ?? null,
+    heroCredit: row.heroAsset?.creatorCredit ?? null,
     trails,
     permit,
     entranceFee,
@@ -203,7 +209,9 @@ export async function getPublishedDestinationCardsByIds(
   if (ids.length === 0) return [];
   const rows = await prisma.destination.findMany({
     where: { id: { in: ids }, status: "published" },
-    include: { heroAsset: { select: { altText: true } } },
+    include: {
+      heroAsset: { select: { altText: true, originalUrl: true, creatorCredit: true } },
+    },
   });
   const points = await fetchDestinationPoints(rows.map((r) => r.id));
   return rows.map((r) => ({
@@ -222,6 +230,8 @@ export async function getPublishedDestinationCardsByIds(
     tags: r.tags,
     location: points.get(r.id) ?? null,
     heroAlt: r.heroAsset?.altText ?? null,
+    heroImageUrl: r.heroAsset?.originalUrl ?? null,
+    heroCredit: r.heroAsset?.creatorCredit ?? null,
   }));
 }
 
