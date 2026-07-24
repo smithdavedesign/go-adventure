@@ -38,18 +38,29 @@ async function getDestinationPermit(
 }
 
 /** Resolve the destination's fact assertions (precedence + freshness) to values. */
-async function getDestinationEntranceFee(
+async function getDestinationFacts(
   destinationId: string,
-): Promise<EntranceFee | null> {
+): Promise<{ entranceFee: EntranceFee | null; highlights: string[] }> {
   const facts = await prisma.factAssertion.findMany({
     where: { subjectType: "destination", subjectId: destinationId },
   });
   const resolved = resolveFacts(facts, new Date());
+
   const fee = resolved.entranceFee as
     | { costUsd?: number; title?: string }
     | undefined;
-  if (!fee || typeof fee.costUsd !== "number") return null;
-  return { costUsd: fee.costUsd, title: fee.title ?? "Entrance fee" };
+  const entranceFee =
+    fee && typeof fee.costUsd === "number"
+      ? { costUsd: fee.costUsd, title: fee.title ?? "Entrance fee" }
+      : null;
+
+  const highlights = Array.isArray(resolved.highlights)
+    ? (resolved.highlights as unknown[]).filter(
+        (h): h is string => typeof h === "string",
+      )
+    : [];
+
+  return { entranceFee, highlights };
 }
 
 /**
@@ -155,11 +166,11 @@ export async function getDestinationBySlug(
   });
   if (!row) return null;
 
-  const [points, routes, permit, entranceFee] = await Promise.all([
+  const [points, routes, permit, facts] = await Promise.all([
     fetchDestinationPoints([row.id]),
     fetchTrailRoutes(row.trails.map((t) => t.trailId)),
     getDestinationPermit(row.id),
-    getDestinationEntranceFee(row.id),
+    getDestinationFacts(row.id),
   ]);
 
   const trails: TrailSummary[] = row.trails.map((dt) => ({
@@ -196,7 +207,8 @@ export async function getDestinationBySlug(
     heroCredit: row.heroAsset?.creatorCredit ?? null,
     trails,
     permit,
-    entranceFee,
+    entranceFee: facts.entranceFee,
+    highlights: facts.highlights,
     lastVerifiedAt: row.lastVerifiedAt,
   };
 }

@@ -9,6 +9,7 @@ import { ForecastCard } from "@/content/destinations/ForecastCard";
 import { getFreshForecastNear } from "@/platform/forecasts/snapshots";
 import { AlertBanner } from "@/content/destinations/AlertBanner";
 import { getFreshAlertsNear } from "@/platform/alerts/snapshots";
+import { nearestAirports } from "@/shared/data/airports";
 import { auth } from "@/user/auth/auth";
 import { isSaved } from "@/user/saved/queries";
 import { SaveControl } from "@/user/saved/SaveControl";
@@ -78,12 +79,20 @@ export default async function DestinationPage({
     trails,
     permit,
     entranceFee,
+    highlights,
     lastVerifiedAt,
   } = destination;
 
   const mapRoutes = trails
     .filter((t) => t.route)
     .map((t) => ({ name: t.name, route: t.route as [number, number][][] }));
+
+  // Tier 4 editorial depth: nearby airports (from the point) and the difficulty
+  // range grounded in the actual representative trails.
+  const airports = location ? nearestAirports(location, 3) : [];
+  const trailDifficultyRange = summarizeTrailDifficulty(
+    trails.map((t) => t.difficulty),
+  );
 
   // Fresh (non-expired) forecast + official alerts near the destination. Never stale.
   const [forecast, alerts] = location
@@ -165,6 +174,7 @@ export default async function DestinationPage({
           <Fact
             label="Budget"
             value={formatBudget(budgetCurrency, budgetLowUsd, budgetHighUsd)}
+            note="per person · excl. airfare"
           />
           <Fact label="Best months" value={formatBestMonths(bestMonths)} />
         </dl>
@@ -194,6 +204,23 @@ export default async function DestinationPage({
           </p>
         )}
 
+        {/* Highlights — brief editorial "why go" bullets. */}
+        {highlights.length > 0 && (
+          <section className="mt-8">
+            <h2 className="mb-3 text-lg font-semibold">Highlights</h2>
+            <ul className="grid max-w-2xl gap-2 sm:grid-cols-2">
+              {highlights.map((h) => (
+                <li key={h} className="flex gap-2 text-sm text-foreground">
+                  <span aria-hidden className="text-brand">
+                    ◆
+                  </span>
+                  <span>{h}</span>
+                </li>
+              ))}
+            </ul>
+          </section>
+        )}
+
         {/* Map (progressive enhancement — page reads fully without it). */}
         {location && (
           <section className="mt-10">
@@ -210,6 +237,11 @@ export default async function DestinationPage({
         <section className="mt-10">
           <h2 className="mb-4 text-lg font-semibold">
             Trails ({trails.length})
+            {trailDifficultyRange && (
+              <span className="ml-2 font-normal text-muted-foreground">
+                · {trailDifficultyRange}
+              </span>
+            )}
           </h2>
           {trails.length > 0 ? (
             <ul className="divide-y divide-border rounded-xl border border-border">
@@ -247,6 +279,27 @@ export default async function DestinationPage({
             </p>
           )}
         </section>
+
+        {/* Getting there — nearest airports (great-circle; airfare out of scope). */}
+        {airports.length > 0 && (
+          <section className="mt-10">
+            <h2 className="mb-3 text-lg font-semibold">Getting there</h2>
+            <ul className="flex flex-wrap gap-x-6 gap-y-2 text-sm">
+              {airports.map((a) => (
+                <li key={a.code}>
+                  <span className="font-medium">{a.code}</span> {a.name}{" "}
+                  <span className="text-muted-foreground">
+                    · {a.distanceMiles} mi
+                  </span>
+                </li>
+              ))}
+            </ul>
+            <p className="mt-2 text-xs text-muted-foreground">
+              Straight-line distances to nearby airports. Airfare and drive times
+              are not included.
+            </p>
+          </section>
+        )}
 
         {/* Weather outlook — only when a fresh snapshot exists (never stale). */}
         {forecast && <ForecastCard forecast={forecast} />}
@@ -291,13 +344,36 @@ export default async function DestinationPage({
   );
 }
 
-function Fact({ label, value }: { label: string; value: string }) {
+function Fact({
+  label,
+  value,
+  note,
+}: {
+  label: string;
+  value: string;
+  note?: string;
+}) {
   return (
     <div>
       <dt className="text-xs uppercase tracking-wide text-muted-foreground">
         {label}
       </dt>
       <dd className="mt-1 font-medium">{value}</dd>
+      {note && <dd className="text-xs text-muted-foreground">{note}</dd>}
     </div>
   );
+}
+
+const DIFFICULTY_ORDER = ["easy", "moderate", "hard", "expert"] as const;
+
+/** "Trails easy–hard" from the representative trails' difficulties, or null. */
+function summarizeTrailDifficulty(difficulties: string[]): string | null {
+  const ranks = difficulties
+    .map((d) => DIFFICULTY_ORDER.indexOf(d as (typeof DIFFICULTY_ORDER)[number]))
+    .filter((i) => i >= 0);
+  if (ranks.length === 0) return null;
+  const lo = DIFFICULTY_ORDER[Math.min(...ranks)];
+  const hi = DIFFICULTY_ORDER[Math.max(...ranks)];
+  const cap = (s: string) => s[0].toUpperCase() + s.slice(1);
+  return lo === hi ? cap(lo) : `${cap(lo)}–${cap(hi)}`;
 }

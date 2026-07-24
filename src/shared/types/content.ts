@@ -129,6 +129,8 @@ export type DestinationDetail = DestinationCard & {
   permit: ResolvedPermit | null;
   /** Official entrance fee (sourced, confirmed), or null if none published. */
   entranceFee: EntranceFee | null;
+  /** Brief editorial highlights (why go), or empty when none published. */
+  highlights: string[];
   /** When the destination's facts were last verified (null if never). */
   lastVerifiedAt: Date | null;
 };
