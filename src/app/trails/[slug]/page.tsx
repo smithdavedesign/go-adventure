@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getTrailBySlug } from "@/content/trails/queries";
+import { getTrailBySlug, getTrailMetadataBySlug } from "@/content/trails/queries";
 import { DestinationMap } from "@/content/destinations/DestinationMap";
 import { SafetyDisclosure } from "@/content/SafetyDisclosure";
 import { Badge } from "@/shared/ui/badge";
@@ -15,7 +15,7 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const trail = await getTrailBySlug(slug);
+  const trail = await getTrailMetadataBySlug(slug);
   if (!trail) return { title: "Not found" };
   return { title: trail.name };
 }

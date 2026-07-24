@@ -213,6 +213,29 @@ export async function getDestinationBySlug(
   };
 }
 
+/** Lightweight published destination fields for route metadata generation. */
+export async function getDestinationMetadataBySlug(slug: string): Promise<{
+  name: string;
+  summary: string | null;
+  heroImageUrl: string | null;
+} | null> {
+  const row = await prisma.destination.findFirst({
+    where: { slug, status: "published" },
+    select: {
+      name: true,
+      summary: true,
+      heroAsset: { select: { originalUrl: true } },
+    },
+  });
+
+  if (!row) return null;
+  return {
+    name: row.name,
+    summary: row.summary,
+    heroImageUrl: row.heroAsset?.originalUrl ?? null,
+  };
+}
+
 /** Published destination cards for a set of ids (used by the saved list). Order
  *  is not guaranteed — the caller reorders (e.g. by save time). */
 export async function getPublishedDestinationCardsByIds(

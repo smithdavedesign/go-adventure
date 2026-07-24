@@ -39,3 +39,14 @@ export async function getTrailBySlug(slug: string): Promise<TrailDetail | null> 
     })),
   };
 }
+
+/** Lightweight published trail lookup for route metadata generation. */
+export async function getTrailMetadataBySlug(
+  slug: string,
+): Promise<{ name: string } | null> {
+  const row = await prisma.trail.findFirst({
+    where: { slug, status: "published" },
+    select: { name: true },
+  });
+  return row ? { name: row.name } : null;
+}

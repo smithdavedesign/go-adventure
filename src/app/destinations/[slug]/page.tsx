@@ -1,7 +1,10 @@
 import type { Metadata } from "next";
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { getDestinationBySlug } from "@/content/destinations/queries";
+import {
+  getDestinationBySlug,
+  getDestinationMetadataBySlug,
+} from "@/content/destinations/queries";
 import { HeroPlaceholder } from "@/content/destinations/HeroPlaceholder";
 import { DestinationMap } from "@/content/destinations/DestinationMap";
 import { SafetyDisclosure } from "@/content/SafetyDisclosure";
@@ -32,7 +35,7 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const destination = await getDestinationBySlug(slug);
+  const destination = await getDestinationMetadataBySlug(slug);
   if (!destination) return { title: "Not found" };
   return {
     title: destination.name,
