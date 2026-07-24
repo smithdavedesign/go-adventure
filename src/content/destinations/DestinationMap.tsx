@@ -18,7 +18,12 @@ import type { Coordinates } from "@/shared/types/content";
  * static fallback; the surrounding page renders fully without this component.
  */
 
-const DEMO_STYLE_URL = "https://demotiles.maplibre.org/style.json";
+// MapTiler Outdoor style — proper production tiles. Falls back to the MapLibre
+// demo style if NEXT_PUBLIC_MAPTILER_KEY is not set (local dev without a key).
+const MAPTILER_KEY = process.env.NEXT_PUBLIC_MAPTILER_KEY;
+const TILE_STYLE_URL = MAPTILER_KEY
+  ? `https://api.maptiler.com/maps/outdoor-v2/style.json?key=${MAPTILER_KEY}`
+  : "https://demotiles.maplibre.org/style.json";
 
 type TrailRoute = { name: string; route: [number, number][][] };
 
@@ -45,7 +50,7 @@ export function DestinationMap({
     try {
       map = new MapLibreMap({
         container: containerRef.current,
-        style: DEMO_STYLE_URL,
+        style: TILE_STYLE_URL,
         center: [center.lng, center.lat],
         zoom: 9,
         attributionControl: { compact: true },

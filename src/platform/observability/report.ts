@@ -4,6 +4,7 @@
  * Sentry sink is wired at deploy time and is env-gated on SENTRY_DSN. Keeping one
  * entry point means alerting can be added in one place with an owner + runbook.
  */
+import * as Sentry from "@sentry/nextjs";
 
 export type ErrorContext = {
   area: "api" | "ingestion" | "outbox" | "forecast" | "publish" | "auth";
@@ -24,7 +25,10 @@ export function captureError(error: unknown, context: ErrorContext): void {
     }),
   );
 
-  // Deploy-time: forward to Sentry when configured. The SDK wiring lives at the
-  // edge of the app (instrumentation) — this is the call site.
-  // if (process.env.SENTRY_DSN) Sentry.captureException(error, { tags: context });
+  // Deploy-time: forward to Sentry when configured.
+  if (process.env.SENTRY_DSN) {
+    Sentry.captureException(error, {
+      tags: { area: context.area, op: context.op },
+    });
+  }
 }
