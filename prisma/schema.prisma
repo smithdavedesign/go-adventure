@@ -314,9 +314,10 @@ model SourceRecord {
   validTo             DateTime?
   createdAt           DateTime  @default(now())
 
-  factAssertions FactAssertion[]
-  permits        PermitRequirement[]
-  media          MediaAsset[]
+  factAssertions   FactAssertion[]
+  permits          PermitRequirement[]
+  media            MediaAsset[]
+  contentRevisions ContentRevision[]
 
   // Idempotency: one canonical record per (source, externalId, normalizerVersion).
   @@unique([sourceId, externalId, normalizerVersion])
@@ -371,10 +372,16 @@ model PermitRequirement {
 /// packet hash, and cannot be published until a human reviewer approves
 /// (PRD AI-Assisted Editorial Workflow).
 model ContentRevision {
-  id               String         @id @default(uuid()) @db.Uuid
-  entityType       String // destination | trail
-  entityId         String         @db.Uuid
-  body             Json
+  id         String  @id @default(uuid()) @db.Uuid
+  entityType String // destination | trail
+  // Null for an ingested draft that hasn't been published into a canonical
+  // entity yet — publish (M6) materializes the entity and backfills this.
+  entityId   String? @db.Uuid
+  // Deterministic key for a not-yet-published draft (e.g. "nps:zion"), so
+  // re-ingestion updates the same draft rather than creating duplicates.
+  draftKey   String? @unique
+  body       Json
+
   origin           RevisionOrigin @default(editorial)
   promptVersion    String? // set when origin = ai_assisted
   sourcePacketHash String? // hash of the packet an AI draft was derived from
@@ -382,12 +389,19 @@ model ContentRevision {
   authorId         String?        @db.Uuid
   reviewedBy       String?        @db.Uuid
   createdAt        DateTime       @default(now())
+  updatedAt        DateTime       @updatedAt
   publishedAt      DateTime?
+
+  // The raw source capture an ingested draft was normalized from (null for
+  // hand-authored editorial revisions).
+  sourceRecord   SourceRecord? @relation(fields: [sourceRecordId], references: [id], onDelete: SetNull)
+  sourceRecordId String?       @db.Uuid
 
   factAssertions FactAssertion[]
 
   @@index([entityType, entityId])
   @@index([reviewStatus])
+  @@index([sourceRecordId])
 }
 
 // ---------------------------------------------------------------------------
@@ -411,4 +425,148 @@ model OutboxEvent {
   lastError   String?
 
   @@index([processedAt])
+}
+
+// ---------------------------------------------------------------------------
+// Platform domain — ingestion runs & dead-letter queue (M5)
+//
+// Every ingestion run is auditable and single-flight per source; records that
+// fail validation/normalization go to the dead-letter queue with the error and
+// raw payload for manual recovery, rather than silently dropping or partially
+// writing (PRD Ingestion and Publishing Operations).
+// ---------------------------------------------------------------------------
+
+enum IngestionStatus {
+  running
+  succeeded
+  failed
+}
+
+/// An expiring weather snapshot (M9). Dynamic data is NEVER a permanent field on
+/// Destination/Trail — it lives here as an attributable snapshot with an expiry,
+/// and is removed from the UI past `expiresAt` rather than shown stale
+/// (PRD Dynamic-data rule). `location` is written via raw SQL (Unsupported).
+model ForecastSnapshot {
+  id         String                                 @id @default(uuid()) @db.Uuid
+  location   Unsupported("geography(Point, 4326)")?
+  provider   String
+  model      String?
+  observedAt DateTime
+  validFrom  DateTime
+  validTo    DateTime
+  expiresAt  DateTime
+  payload    Json
+  createdAt  DateTime                               @default(now())
+
+  @@index([expiresAt])
+  @@index([location], type: Gist)
+}
+
+model IngestionRun {
+  id                String          @id @default(uuid()) @db.Uuid
+  sourceName        String
+  normalizerVersion String
+  status            IngestionStatus @default(running)
+  startedAt         DateTime        @default(now())
+  finishedAt        DateTime?
+  recordsProcessed  Int             @default(0)
+  recordsFailed     Int             @default(0)
+  error             String? // set when the whole run fails
+
+  deadLetters IngestionDeadLetter[]
+
+  @@index([sourceName, startedAt])
+}
+
+model IngestionDeadLetter {
+  id         String       @id @default(uuid()) @db.Uuid
+  run        IngestionRun @relation(fields: [runId], references: [id], onDelete: Cascade)
+  runId      String       @db.Uuid
+  sourceName String
+  externalId String
+  stage      String // fetch | validate | normalize | persist
+  error      String
+  payload    Json // the raw record that failed, for replay
+  createdAt  DateTime     @default(now())
+
+  @@index([runId])
+}
+
+// ---------------------------------------------------------------------------
+// User domain — accounts, sessions, saves (M7)
+//
+// Auth.js (v5) with the Prisma adapter and DATABASE sessions (revocable;
+// account deletion cleanly invalidates them — see docs/adr/0002). Google is the
+// only launch provider. User code may reference published content IDs but never
+// mutates editorial records (PRD Service Boundaries).
+// ---------------------------------------------------------------------------
+
+model User {
+  id            String    @id @default(uuid()) @db.Uuid
+  name          String?
+  email         String?   @unique
+  emailVerified DateTime?
+  image         String?
+  // Gate for /admin (PRD: authenticated Google account + is_admin). False by
+  // default; no public path sets it.
+  isAdmin       Boolean   @default(false)
+  locale        String    @default("en")
+  createdAt     DateTime  @default(now())
+  lastActiveAt  DateTime  @default(now())
+
+  accounts Account[]
+  sessions Session[]
+  saved    SavedDestination[]
+}
+
+model Account {
+  id                String  @id @default(uuid()) @db.Uuid
+  userId            String  @db.Uuid
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+  @@index([userId])
+}
+
+model Session {
+  id           String   @id @default(uuid()) @db.Uuid
+  sessionToken String   @unique
+  userId       String   @db.Uuid
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model VerificationToken {
+  identifier String
+  token      String
+  expires    DateTime
+
+  @@id([identifier, token])
+}
+
+/// A user's saved destination — the primary success signal (PRD KPIs). References
+/// a published content ID; never mutates content.
+model SavedDestination {
+  id            String   @id @default(uuid()) @db.Uuid
+  userId        String   @db.Uuid
+  destinationId String   @db.Uuid
+  savedAt       DateTime @default(now())
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, destinationId])
+  @@index([destinationId])
 }

@@ -1,0 +1,23 @@
+{
+  "RECDATA": [
+    {
+      "RecAreaID": "2991",
+      "RecAreaName": "Inyo National Forest",
+      "RecAreaDescription": "Home to Mount Whitney and the Ansel Adams Wilderness, spanning the eastern Sierra Nevada.",
+      "RecAreaLatitude": 37.6,
+      "RecAreaLongitude": -118.7
+    },
+    {
+      "RecAreaID": "1081",
+      "RecAreaName": "Olympic National Forest",
+      "RecAreaDescription": "Rainforests, rivers, and the eastern flank of the Olympic Mountains.",
+      "RecAreaLatitude": 47.6,
+      "RecAreaLongitude": -123.1
+    },
+    {
+      "RecAreaID": "9999",
+      "RecAreaName": "Malformed Area",
+      "RecAreaDescription": "Missing coordinates — exercises the dead-letter queue."
+    }
+  ]
+}

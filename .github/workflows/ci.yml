@@ -53,6 +53,8 @@ jobs:
           --health-retries 10
     env:
       DATABASE_URL: postgresql://postgres:postgres@localhost:5432/go_adventure_dev?schema=public
+      # CI-only auth secret for the E2E run (Auth.js requires one). Not a real secret.
+      AUTH_SECRET: ci-e2e-insecure-secret-not-used-in-production
     steps:
       - uses: actions/checkout@v4
 
@@ -67,6 +69,10 @@ jobs:
       # E2E specs assert against.
       - run: npx prisma migrate deploy
       - run: npm run db:seed
+
+      # Smoke the ingestion pipeline end-to-end (offline fixture) — proves it
+      # runs against a real DB and lands drafts without crashing.
+      - run: npm run ingest:nps -- --fixture
 
       - run: npx playwright install --with-deps chromium
 

@@ -10,11 +10,31 @@ import { prisma } from "@/shared/config/db";
 import { fetchDestinationPoints, fetchTrailRoutes } from "@/content/geo";
 import type { DestinationFilters } from "@/content/search/filters";
 import { searchDestinationIds } from "@/content/search/search";
+import { resolvePermit } from "@/platform/content-revisions/precedence";
 import type {
   DestinationCard,
   DestinationDetail,
+  PermitRequirementType,
+  ResolvedPermit,
   TrailSummary,
 } from "@/shared/types/content";
+
+/** Fetch and resolve the current permit for a destination (freshest, non-expired). */
+async function getDestinationPermit(
+  destinationId: string,
+): Promise<ResolvedPermit | null> {
+  const permits = await prisma.permitRequirement.findMany({
+    where: { subjectType: "destination", subjectId: destinationId },
+  });
+  const winner = resolvePermit(permits, new Date());
+  if (!winner) return null;
+  return {
+    requirementType: winner.requirementType as PermitRequirementType,
+    scope: winner.scope,
+    officialUrl: winner.officialUrl,
+    lastVerifiedAt: winner.lastVerifiedAt,
+  };
+}
 
 /**
  * Translate parsed filters into a Prisma `where` over published destinations.
@@ -115,9 +135,10 @@ export async function getDestinationBySlug(
   });
   if (!row) return null;
 
-  const [points, routes] = await Promise.all([
+  const [points, routes, permit] = await Promise.all([
     fetchDestinationPoints([row.id]),
     fetchTrailRoutes(row.trails.map((t) => t.trailId)),
+    getDestinationPermit(row.id),
   ]);
 
   const trails: TrailSummary[] = row.trails.map((dt) => ({
@@ -151,7 +172,39 @@ export async function getDestinationBySlug(
     location: points.get(row.id) ?? null,
     heroAlt: row.heroAsset?.altText ?? null,
     trails,
+    permit,
+    lastVerifiedAt: row.lastVerifiedAt,
   };
+}
+
+/** Published destination cards for a set of ids (used by the saved list). Order
+ *  is not guaranteed — the caller reorders (e.g. by save time). */
+export async function getPublishedDestinationCardsByIds(
+  ids: string[],
+): Promise<DestinationCard[]> {
+  if (ids.length === 0) return [];
+  const rows = await prisma.destination.findMany({
+    where: { id: { in: ids }, status: "published" },
+    include: { heroAsset: { select: { altText: true } } },
+  });
+  const points = await fetchDestinationPoints(rows.map((r) => r.id));
+  return rows.map((r) => ({
+    id: r.id,
+    name: r.name,
+    slug: r.slug,
+    activities: r.activities,
+    bestMonths: r.bestMonths,
+    difficulty: r.difficulty,
+    tripLength: r.tripLength,
+    label: r.label,
+    budgetCurrency: r.budgetCurrency,
+    budgetLowUsd: r.budgetLowUsd,
+    budgetHighUsd: r.budgetHighUsd,
+    summary: r.summary,
+    tags: r.tags,
+    location: points.get(r.id) ?? null,
+    heroAlt: r.heroAsset?.altText ?? null,
+  }));
 }
 
 /** All published slugs — for generateStaticParams / sitemap use. */

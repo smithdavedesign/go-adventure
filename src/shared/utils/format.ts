@@ -9,8 +9,21 @@ import type {
   AdventureLabel,
   Difficulty,
   Month,
+  PermitRequirementType,
   TripLength,
 } from "@/shared/types/content";
+
+const PERMIT_TYPE_TEXT: Record<PermitRequirementType, string> = {
+  none: "No permit required",
+  reservation: "Reservation required",
+  quota: "Quota / lottery permit",
+  timed_entry: "Timed-entry permit",
+  unknown: "Permit status unconfirmed",
+};
+
+export function formatPermitType(t: PermitRequirementType): string {
+  return PERMIT_TYPE_TEXT[t];
+}
 
 const LABEL_TEXT: Record<AdventureLabel, string> = {
   editors_pick: "Editor's Pick",

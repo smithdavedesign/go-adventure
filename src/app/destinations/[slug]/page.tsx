@@ -5,6 +5,11 @@ import { getDestinationBySlug } from "@/content/destinations/queries";
 import { HeroPlaceholder } from "@/content/destinations/HeroPlaceholder";
 import { DestinationMap } from "@/content/destinations/DestinationMap";
 import { SafetyDisclosure } from "@/content/SafetyDisclosure";
+import { ForecastCard } from "@/content/destinations/ForecastCard";
+import { getFreshForecastNear } from "@/platform/forecasts/snapshots";
+import { auth } from "@/user/auth/auth";
+import { isSaved } from "@/user/saved/queries";
+import { SaveControl } from "@/user/saved/SaveControl";
 import { Badge } from "@/shared/ui/badge";
 import {
   formatActivity,
@@ -12,6 +17,7 @@ import {
   formatBudget,
   formatDifficulty,
   formatLabel,
+  formatPermitType,
   formatTripLength,
 } from "@/shared/utils/format";
 
@@ -40,6 +46,11 @@ export default async function DestinationPage({
   const destination = await getDestinationBySlug(slug);
   if (!destination) notFound();
 
+  const session = await auth();
+  const saved = session?.user?.id
+    ? await isSaved(session.user.id, destination.id)
+    : false;
+
   const {
     name,
     label,
@@ -54,14 +65,44 @@ export default async function DestinationPage({
     budgetHighUsd,
     location,
     trails,
+    permit,
+    lastVerifiedAt,
   } = destination;
 
   const mapRoutes = trails
     .filter((t) => t.route)
     .map((t) => ({ name: t.name, route: t.route as [number, number][][] }));
 
+  // Fresh (non-expired) forecast near the destination, if any. Never stale.
+  const forecast = location
+    ? await getFreshForecastNear(location.lat, location.lng)
+    : null;
+
+  // JSON-LD: only real on-page facts (name, description, geo). Never ratings,
+  // availability, or route claims (PRD SEO). Inline JSON is CSP-safe.
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "TouristDestination",
+    name,
+    ...(summary ? { description: summary } : {}),
+    ...(location
+      ? {
+          geo: {
+            "@type": "GeoCoordinates",
+            latitude: location.lat,
+            longitude: location.lng,
+          },
+        }
+      : {}),
+  };
+
   return (
     <main>
+      <script
+        type="application/ld+json"
+        // eslint-disable-next-line react/no-danger
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       {/* Hero ≥ 60% viewport height on desktop (PRD Design Principles). */}
       <HeroPlaceholder slug={slug} alt={heroAlt} className="h-[45vh] sm:h-[60vh]">
         <div className="absolute inset-x-0 bottom-0 bg-gradient-to-t from-black/60 to-transparent p-6 sm:p-10">
@@ -79,12 +120,20 @@ export default async function DestinationPage({
       </HeroPlaceholder>
 
       <div className="mx-auto max-w-6xl px-4 py-10">
-        <Link
-          href="/explore"
-          className="text-sm text-muted-foreground hover:text-foreground"
-        >
-          ← Back to Explore
-        </Link>
+        <div className="flex items-center justify-between gap-4">
+          <Link
+            href="/explore"
+            className="text-sm text-muted-foreground hover:text-foreground"
+          >
+            ← Back to Explore
+          </Link>
+          <SaveControl
+            destinationId={destination.id}
+            slug={slug}
+            isSignedIn={!!session?.user?.id}
+            saved={saved}
+          />
+        </div>
 
         {/* At-a-glance facts */}
         <dl className="mt-6 grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-4">
@@ -165,8 +214,43 @@ export default async function DestinationPage({
           )}
         </section>
 
+        {/* Weather outlook — only when a fresh snapshot exists (never stale). */}
+        {forecast && <ForecastCard forecast={forecast} />}
+
+        {/* Permit info — always links to the official land manager, never
+            presents cached inventory as bookable (PRD Content Trust). */}
+        <section className="mt-10">
+          <h2 className="mb-3 text-lg font-semibold">Permits &amp; access</h2>
+          {permit ? (
+            <div className="rounded-xl border border-border p-4">
+              <p className="font-medium">
+                {formatPermitType(permit.requirementType)}
+              </p>
+              <p className="mt-1 text-sm text-muted-foreground">{permit.scope}</p>
+              <div className="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm">
+                <a
+                  href={permit.officialUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="font-medium text-brand underline underline-offset-4"
+                >
+                  Official permit &amp; conditions ↗
+                </a>
+                <span className="text-muted-foreground">
+                  Last verified {permit.lastVerifiedAt.toLocaleDateString()}
+                </span>
+              </div>
+            </div>
+          ) : (
+            <p className="text-sm text-muted-foreground">
+              Permit status unconfirmed — check with the land manager before you
+              go.
+            </p>
+          )}
+        </section>
+
         <div className="mt-10">
-          <SafetyDisclosure />
+          <SafetyDisclosure lastVerifiedAt={lastVerifiedAt} />
         </div>
       </div>
     </main>

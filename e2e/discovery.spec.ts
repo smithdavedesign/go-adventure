@@ -42,6 +42,23 @@ test.describe("discovery walking skeleton", () => {
     expect(await cards.count()).toBeGreaterThanOrEqual(6);
   });
 
+  test("a destination surfaces permit info with a working official link", async ({
+    page,
+  }) => {
+    // PRD Content Trust: permit info always links to the official land manager.
+    await page.goto("/destinations/zion-narrows-basecamp");
+    await expect(
+      page.getByRole("heading", { name: /Permits & access/i }),
+    ).toBeVisible();
+    const official = page.getByRole("link", {
+      name: /Official permit & conditions/i,
+    });
+    await expect(official).toBeVisible();
+    await expect(official).toHaveAttribute("href", /nps\.gov\/zion/);
+    // Opens the official surface in a new tab, safely.
+    await expect(official).toHaveAttribute("rel", /noopener/);
+  });
+
   test("keyword search narrows results and tolerates a typo", async ({
     page,
   }) => {

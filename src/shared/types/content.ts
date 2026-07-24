@@ -101,8 +101,27 @@ export type TrailSummary = {
   route: [number, number][][] | null;
 };
 
+export type PermitRequirementType =
+  | "none"
+  | "reservation"
+  | "quota"
+  | "timed_entry"
+  | "unknown";
+
+/** The current permit info to display, already resolved for freshness/precedence. */
+export type ResolvedPermit = {
+  requirementType: PermitRequirementType;
+  scope: string;
+  officialUrl: string;
+  lastVerifiedAt: Date;
+};
+
 export type DestinationDetail = DestinationCard & {
   trails: TrailSummary[];
+  /** Current permit requirement, or null when there's no fresh permit info. */
+  permit: ResolvedPermit | null;
+  /** When the destination's facts were last verified (null if never). */
+  lastVerifiedAt: Date | null;
 };
 
 export type TrailDetail = TrailSummary & {

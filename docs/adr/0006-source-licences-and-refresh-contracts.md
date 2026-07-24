@@ -9,8 +9,11 @@ The PRD requires every ingested source to have a reviewed source-registry entry 
 
 ## Decision
 
-Not yet decided. NPS API is the first source (M5) and needs its registry entry completed first; the remaining sources follow at M9.
+**Partial (NPS entry drafted in code, legal review still owed).** The NPS Data API adapter carries a `SourceRegistry` entry (`src/platform/ingestion/nps/adapter.ts`) recording licence, attribution ("Data courtesy of the National Park Service"), terms URL, commercial-use note, refresh policy (daily), and owner — and the pipeline refuses to ingest a source whose `Source.enabled` flag is false. The registry row is created in the `Source` table on first ingest.
+
+Still open before any NPS-sourced content is **published** (not just ingested to draft): a human legal/content review of NPS commercial-use terms and per-asset media rights (NPS material may include third-party rights; official insignia is not reusable). Remaining sources (Recreation.gov, OSM/ODbL, USGS, Open-Meteo) each need their own registry entry + review at M9.
 
 ## Consequences
 
-TBD once decided.
+- Ingestion is gated on a registry entry existing and being enabled, but the *content quality / legal* gate (PRD Launch Gates → Source/legal) is a human sign-off that code cannot satisfy — tracked for M11.
+- Attribution and licence are snapshotted onto every `SourceRecord` at retrieval time, so a later terms change doesn't silently rewrite what a published value was based on.

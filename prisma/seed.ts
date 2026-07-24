@@ -371,8 +371,9 @@ async function main() {
       },
     });
 
-    // 1. Hero media placeholder. No real bitmap yet (no rights-cleared media
-    //    until M5/M6) — the UI renders a generated placeholder from the slug.
+    // 1. Hero media placeholder, linked to its source record. No real bitmap yet
+    //    (no rights-cleared media until M5/M6) — the UI renders a generated
+    //    placeholder from the slug.
     const hero = await prisma.mediaAsset.create({
       data: {
         objectKey: `seed/${d.slug}/hero.jpg`,
@@ -381,6 +382,7 @@ async function main() {
         licence: "PLACEHOLDER-NOT-FOR-PUBLICATION",
         rightsStatus: "unknown",
         moderationStatus: "approved",
+        sourceRecordId: sourceRecord.id,
       },
     });
 
@@ -413,6 +415,55 @@ async function main() {
       SET location = ST_SetSRID(ST_MakePoint(${lng}, ${lat}), 4326)::geography
       WHERE id = ${destination.id}::uuid
     `;
+
+    // 3a. Provenance: an approved editorial ContentRevision holding the summary,
+    //     the FactAssertions backing each published fact, and the permit info.
+    //     This is what makes every seed fact traceable (M4 exit criterion).
+    const revision = await prisma.contentRevision.create({
+      data: {
+        entityType: "destination",
+        entityId: destination.id,
+        body: { summary: d.summary },
+        origin: "editorial",
+        reviewStatus: "approved",
+        publishedAt: now,
+      },
+    });
+
+    const factFields: { field: string; value: unknown }[] = [
+      { field: "difficulty", value: d.difficulty },
+      { field: "tripLength", value: d.tripLength },
+      { field: "bestMonths", value: d.bestMonths },
+      {
+        field: "budget",
+        value: { currency: "USD", low: d.budgetLowUsd, high: d.budgetHighUsd },
+      },
+    ];
+    await prisma.factAssertion.createMany({
+      data: factFields.map((f) => ({
+        subjectType: "destination",
+        subjectId: destination.id,
+        field: f.field,
+        value: f.value as object,
+        confidence: "editorial" as const,
+        sourceRecordId: sourceRecord.id,
+        contentRevisionId: revision.id,
+        verifiedAt: now,
+      })),
+    });
+
+    // 3b. Permit requirement, always with an official land-manager URL.
+    await prisma.permitRequirement.create({
+      data: {
+        subjectType: "destination",
+        subjectId: destination.id,
+        requirementType: d.permit.requirementType,
+        scope: d.permit.scope,
+        officialUrl: d.permit.officialUrl,
+        sourceRecordId: sourceRecord.id,
+        lastVerifiedAt: now,
+      },
+    });
 
     // 4. Trails + geometry + the destination↔trail editorial ordering.
     let order = 0;
@@ -456,8 +507,12 @@ async function main() {
   const [{ count }] = await prisma.$queryRaw<
     { count: bigint }[]
   >`SELECT COUNT(*)::int AS count FROM "Destination" WHERE location IS NOT NULL`;
+  const facts = await prisma.factAssertion.count();
+  const permits = await prisma.permitRequirement.count();
+  const revisions = await prisma.contentRevision.count();
   console.log(
-    `\nSeeded ${DESTINATIONS.length} destinations; ${count} have a valid location point.`,
+    `\nSeeded ${DESTINATIONS.length} destinations (${count} with a location point), ` +
+      `${revisions} revisions, ${facts} fact assertions, ${permits} permits — all provenance-backed.`,
   );
 }
 
