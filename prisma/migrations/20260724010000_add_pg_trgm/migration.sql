@@ -1,0 +1,11 @@
+-- Enable pg_trgm for typo-tolerant keyword search (PRD Search: Phase 1 uses
+-- Postgres FTS + pg_trgm). The `similarity()` function this provides is used by
+-- the keyword search query (src/content/search/search.ts).
+--
+-- No trigram/GIN indexes are created yet: at the Phase 1 corpus size (25–50
+-- destinations) a sequential scan is trivially fast, and search indexes are
+-- deferred to the graduation criteria in docs/adr/0004-search-graduation-criteria.md.
+-- Like postgis, the extension itself is not managed by Prisma schema (the
+-- postgresqlExtensions preview feature is intentionally not enabled), so it does
+-- not register as schema drift.
+CREATE EXTENSION IF NOT EXISTS pg_trgm;

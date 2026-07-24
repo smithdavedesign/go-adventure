@@ -1,0 +1,414 @@
+// Travel Roamer — canonical data model (M1 slice).
+//
+// SCOPE: This is the deliberately trimmed M1 schema — enough to render the
+// walking-skeleton UI (M2) and search (M3) against seed data. The provenance
+// backbone (Source, SourceRecord, FactAssertion, PermitRequirement,
+// ContentRevision) arrives in M4; user/auth models in M7. See docs/ROADMAP.md.
+//
+// SPATIAL: geography/geometry columns use Prisma's Unsupported(...) type and are
+// nullable because Prisma's typed client cannot populate them in .create() — rows
+// are created for their typed fields, then geometry is written via parameterized
+// raw SQL. "Every published row has geometry" is enforced by the publish workflow
+// (M6), not a NOT NULL constraint. Full rationale: docs/adr/0003-postgis-spatial-model.md.
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+// ---------------------------------------------------------------------------
+// Enums — the fixed Phase 1 launch taxonomy.
+// Expanding any of these (e.g. adding climbing/skiing activities) is a Phase 2
+// migration gated on a revised taxonomy + safety review per the PRD, which is
+// exactly why these are enums and not free-form strings.
+// ---------------------------------------------------------------------------
+
+enum Activity {
+  hiking
+  backpacking
+  // Phase 2: climbing, camping, ski_touring, mountaineering, diving
+}
+
+enum Month {
+  january
+  february
+  march
+  april
+  may
+  june
+  july
+  august
+  september
+  october
+  november
+  december
+}
+
+enum Difficulty {
+  easy
+  moderate
+  hard
+  expert
+}
+
+/// Trip-length buckets from the PRD (day | 2-3d | 4-7d | 7+d). Named rather than
+/// numeric because they are editorial buckets, not a measured value.
+enum TripLength {
+  day
+  short_2_3d
+  medium_4_7d
+  long_7d_plus
+}
+
+/// One hand-assigned primary label per destination at launch.
+/// `trending` is intentionally present but MUST NOT be assigned until its metric,
+/// timeframe, and review cadence are defined (PRD Editorial Rubrics / Labels).
+enum AdventureLabel {
+  editors_pick
+  hidden_gem
+  trending
+  beginner_friendly
+  epic
+}
+
+enum ContentStatus {
+  draft
+  in_review
+  published
+  archived
+}
+
+enum RightsStatus {
+  verified
+  restricted
+  unknown
+  rejected
+}
+
+enum ModerationStatus {
+  pending
+  approved
+  rejected
+}
+
+/// Precedence order for a fact, highest trust first. When sources conflict,
+/// official current land-manager info wins (PRD Content Trust Policy). Encoded
+/// as an explicit ordinal in code (see src/platform/content-revisions/precedence.ts).
+enum FactConfidence {
+  confirmed // official / land-manager sourced
+  editorial // human-reviewed editorial judgement
+  uncertain // flagged, shown with a caveat or withheld
+}
+
+/// Origin of a content revision, in precedence order (PRD: official > editorial
+/// > community > ai_assisted). `ai_assisted` is never published without human sign-off.
+enum RevisionOrigin {
+  official
+  editorial
+  community
+  ai_assisted
+}
+
+enum ReviewStatus {
+  draft
+  in_review
+  approved
+  rejected
+}
+
+/// PRD Editorial Rubric — Permit required: use exactly these; never infer a
+/// permit rule from a nearby trail or park. `unknown` is a valid, honest value.
+enum PermitRequirementType {
+  none
+  reservation
+  quota
+  timed_entry
+  unknown
+}
+
+// ---------------------------------------------------------------------------
+// Content domain
+// ---------------------------------------------------------------------------
+
+model Destination {
+  id   String @id @default(uuid()) @db.Uuid
+  name String
+  slug String @unique // URL-safe, unique — the canonical human-readable page key
+
+  // Canonical geography (see file header + ADR-0003). Nullable at the DB layer;
+  // populated via raw SQL after create. `location` is the required-at-publish
+  // point; `area` is an optional boundary polygon.
+  location Unsupported("geography(Point, 4326)")?
+  area     Unsupported("geometry(MultiPolygon, 4326)")?
+
+  // Discovery facets — the attributes Explore filters on (M2/M3).
+  activities Activity[]
+  bestMonths Month[]
+  difficulty Difficulty
+  tripLength TripLength
+  label      AdventureLabel?
+
+  // Budget: structured per the PRD rubric — currency + low/high, never reduced
+  // to $/$$/$$$ without the underlying numbers. Fuller rubric fields
+  // (party-size/duration assumptions, inclusions/exclusions, calculatedAt)
+  // are deferred to the M4/M9 editorial model.
+  budgetCurrency String @default("USD")
+  budgetLowUsd   Int
+  budgetHighUsd  Int
+
+  // Editorial summary text. The full versioned ContentRevision model is M4;
+  // for M1 this is a plain column so pages have something to render.
+  summary String?
+
+  tags  String[]
+  score Float? // null until the Phase 2 computed Adventure Score exists
+
+  status         ContentStatus @default(draft)
+  lastVerifiedAt DateTime?
+  publishedAt    DateTime? // null = not published
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  // Hero image (one) vs. gallery photos (many) are distinct relations to the
+  // same MediaAsset model, so both must be named.
+  heroAsset   MediaAsset?  @relation("DestinationHero", fields: [heroAssetId], references: [id])
+  heroAssetId String?      @db.Uuid
+  photos      MediaAsset[] @relation("DestinationPhotos")
+
+  trails DestinationTrail[]
+
+  @@index([status])
+  @@index([slug])
+  @@index([location], type: Gist)
+}
+
+model Trail {
+  id   String @id @default(uuid()) @db.Uuid
+  name String
+  slug String @unique
+
+  // Canonical route geometry — nullable at DB layer, populated via raw SQL.
+  routeGeometry Unsupported("geography(MultiLineString, 4326)")?
+
+  distanceMiles   Float
+  elevationGainFt Float
+  difficulty      Difficulty
+  durationHours   Float
+  costUSD         Float? // per-trail cost (e.g. permit fee) when applicable
+
+  tags String[]
+
+  status         ContentStatus @default(draft)
+  lastVerifiedAt DateTime?
+  publishedAt    DateTime?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+
+  destinations DestinationTrail[]
+  photos       MediaAsset[]       @relation("TrailPhotos")
+
+  @@index([status])
+  @@index([slug])
+  @@index([routeGeometry], type: Gist)
+}
+
+/// Join model: a destination lists a representative, editorially-ordered set of
+/// trails. A trail can appear under more than one destination.
+model DestinationTrail {
+  destinationId    String  @db.Uuid
+  trailId          String  @db.Uuid
+  isRepresentative Boolean @default(false)
+  editorialOrder   Int     @default(0)
+
+  destination Destination @relation(fields: [destinationId], references: [id], onDelete: Cascade)
+  trail       Trail       @relation(fields: [trailId], references: [id], onDelete: Cascade)
+
+  @@id([destinationId, trailId])
+  @@index([trailId])
+}
+
+/// Media asset. `altText` is required before an asset can be published
+/// (WCAG 2.2 AA, PRD Design Principles) but nullable in the schema so drafts can
+/// exist before it's written. Provenance is via `sourceRecordId` (M4).
+model MediaAsset {
+  id            String  @id @default(uuid()) @db.Uuid
+  objectKey     String // Cloudflare R2 key (or a seed placeholder path)
+  originalUrl   String? // external URL when sourced/seeded from elsewhere
+  altText       String?
+  creatorCredit String?
+  licence       String
+
+  rightsStatus     RightsStatus     @default(unknown)
+  moderationStatus ModerationStatus @default(pending)
+  exifStrippedAt   DateTime?
+  createdAt        DateTime         @default(now())
+
+  // Provenance: which raw source capture this asset came from (nullable for
+  // editorial/seed uploads). SET NULL on source deletion — the asset and its
+  // rights metadata outlive a source-registry change.
+  sourceRecord   SourceRecord? @relation(fields: [sourceRecordId], references: [id], onDelete: SetNull)
+  sourceRecordId String?       @db.Uuid
+
+  // An asset is a destination hero, a destination gallery photo, or a trail
+  // photo. These are separate optional relations; a given asset uses one.
+  heroOf        Destination[] @relation("DestinationHero")
+  destination   Destination?  @relation("DestinationPhotos", fields: [destinationId], references: [id])
+  destinationId String?       @db.Uuid
+  trail         Trail?        @relation("TrailPhotos", fields: [trailId], references: [id])
+  trailId       String?       @db.Uuid
+
+  @@index([sourceRecordId])
+}
+
+// ---------------------------------------------------------------------------
+// Platform domain — provenance backbone (M4)
+//
+// Every user-visible factual claim traces to a SourceRecord (a raw, checksummed
+// capture) via a FactAssertion, and editorial text lives in a versioned
+// ContentRevision. Subjects are polymorphic (subjectType + subjectId) exactly as
+// the PRD data model specifies — a fact/permit can attach to a destination,
+// trail, or permit — so these are not FK-enforced relations; query by subject.
+// See docs/ARCHITECTURE.md → Service Boundaries and the PRD Data Model.
+// ---------------------------------------------------------------------------
+
+/// A registered data source. No source may be ingested or displayed until it has
+/// a reviewed registry entry (PRD Source Registry). See docs/adr/0006.
+model Source {
+  id              String   @id @default(uuid()) @db.Uuid
+  name            String   @unique
+  baseUrl         String
+  licence         String
+  attributionText String
+  termsUrl        String?
+  commercialUse   String // free-text summary of permitted commercial use
+  refreshPolicy   String // e.g. "daily", "on-demand", "static"
+  owner           String // accountable person/team
+  enabled         Boolean  @default(true)
+  createdAt       DateTime @default(now())
+
+  records SourceRecord[]
+
+  @@index([enabled])
+}
+
+/// An immutable raw capture from a source, checksummed and reproducible. Raw
+/// bytes live in restricted object storage (`rawObjectKey`); this row is the
+/// metadata + provenance snapshot taken at retrieval time.
+model SourceRecord {
+  id                  String    @id @default(uuid()) @db.Uuid
+  source              Source    @relation(fields: [sourceId], references: [id], onDelete: Restrict)
+  sourceId            String    @db.Uuid
+  externalId          String // id of the object within the source
+  canonicalUrl        String?
+  retrievedAt         DateTime
+  rawObjectKey        String // immutable raw capture in restricted R2
+  checksum            String
+  normalizerVersion   String
+  licenceSnapshot     String // licence text as it was at retrieval
+  attributionSnapshot String
+  validFrom           DateTime?
+  validTo             DateTime?
+  createdAt           DateTime  @default(now())
+
+  factAssertions FactAssertion[]
+  permits        PermitRequirement[]
+  media          MediaAsset[]
+
+  // Idempotency: one canonical record per (source, externalId, normalizerVersion).
+  @@unique([sourceId, externalId, normalizerVersion])
+  @@index([sourceId])
+}
+
+/// A single verified fact about a subject, traceable to a source record and/or a
+/// content revision, with a confidence level and optional expiry. Expiring facts
+/// are removed from display past `expiresAt` rather than shown stale
+/// (PRD Dynamic-data rule).
+model FactAssertion {
+  id                String           @id @default(uuid()) @db.Uuid
+  subjectType       String // destination | trail | permit | access_point
+  subjectId         String           @db.Uuid
+  field             String // e.g. "difficulty", "budget", "bestMonths"
+  value             Json
+  confidence        FactConfidence   @default(editorial)
+  sourceRecord      SourceRecord?    @relation(fields: [sourceRecordId], references: [id], onDelete: SetNull)
+  sourceRecordId    String?          @db.Uuid
+  contentRevision   ContentRevision? @relation(fields: [contentRevisionId], references: [id], onDelete: SetNull)
+  contentRevisionId String?          @db.Uuid
+  reviewedBy        String?          @db.Uuid
+  verifiedAt        DateTime
+  expiresAt         DateTime?
+  createdAt         DateTime         @default(now())
+
+  @@index([subjectType, subjectId])
+  @@index([expiresAt])
+}
+
+/// Permit requirement for a subject. `requirementType` uses the fixed rubric
+/// vocabulary; `unknown` is valid. Always carries the official URL and a
+/// verification date; may expire (PRD Editorial Rubric — Permit required).
+model PermitRequirement {
+  id              String                @id @default(uuid()) @db.Uuid
+  subjectType     String // destination | trail
+  subjectId       String                @db.Uuid
+  requirementType PermitRequirementType
+  scope           String // e.g. "overnight wilderness", "day use"
+  officialUrl     String
+  sourceRecord    SourceRecord?         @relation(fields: [sourceRecordId], references: [id], onDelete: SetNull)
+  sourceRecordId  String?               @db.Uuid
+  lastVerifiedAt  DateTime
+  expiresAt       DateTime?
+  createdAt       DateTime              @default(now())
+
+  @@index([subjectType, subjectId])
+}
+
+/// A versioned body of editorial content for an entity. Materially AI-assisted
+/// revisions carry `origin = ai_assisted`, the prompt version, and the source
+/// packet hash, and cannot be published until a human reviewer approves
+/// (PRD AI-Assisted Editorial Workflow).
+model ContentRevision {
+  id               String         @id @default(uuid()) @db.Uuid
+  entityType       String // destination | trail
+  entityId         String         @db.Uuid
+  body             Json
+  origin           RevisionOrigin @default(editorial)
+  promptVersion    String? // set when origin = ai_assisted
+  sourcePacketHash String? // hash of the packet an AI draft was derived from
+  reviewStatus     ReviewStatus   @default(draft)
+  authorId         String?        @db.Uuid
+  reviewedBy       String?        @db.Uuid
+  createdAt        DateTime       @default(now())
+  publishedAt      DateTime?
+
+  factAssertions FactAssertion[]
+
+  @@index([entityType, entityId])
+  @@index([reviewStatus])
+}
+
+// ---------------------------------------------------------------------------
+// Platform domain — outbox (M4 groundwork, exercised by M5/M6)
+//
+// One canonical DB is the source of truth; search indexes, caches, and static
+// pages are rebuildable projections. Every mutation that changes a projection
+// emits a durable outbox event (PRD Architecture Principles). The processor
+// (M5/M6) reads unprocessed events and rebuilds projections idempotently.
+// ---------------------------------------------------------------------------
+
+model OutboxEvent {
+  id          String    @id @default(uuid()) @db.Uuid
+  type        String // e.g. "destination.published", "destination.unpublished"
+  entityType  String
+  entityId    String    @db.Uuid
+  payload     Json
+  createdAt   DateTime  @default(now())
+  processedAt DateTime? // null = pending
+  attempts    Int       @default(0)
+  lastError   String?
+
+  @@index([processedAt])
+}

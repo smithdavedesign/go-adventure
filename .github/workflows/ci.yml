@@ -1,0 +1,81 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+jobs:
+  checks:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      # `npm ci` runs the postinstall `prisma generate`, so the generated client
+      # (gitignored) exists before typecheck/build. No database needed for this.
+      - run: npm ci
+
+      - run: npm run lint
+
+      - run: npm run typecheck
+
+      - run: npm run test
+
+      - run: npm run build
+
+      # Informational only: Next.js's own bundled transitive deps (postcss, sharp)
+      # currently have no non-breaking fix upstream (see ADR-0001). Re-evaluate
+      # as blocking once a patched Next.js release is available.
+      - name: Dependency audit (non-blocking)
+        run: npm audit --audit-level=high
+        continue-on-error: true
+
+  e2e:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgis/postgis:17-3.4
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: go_adventure_dev
+        ports:
+          - "5432:5432"
+        options: >-
+          --health-cmd "pg_isready -U postgres -d go_adventure_dev"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 10
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/go_adventure_dev?schema=public
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 24
+          cache: npm
+
+      - run: npm ci
+
+      # Apply migrations (enables postgis + pg_trgm) and load the seed corpus the
+      # E2E specs assert against.
+      - run: npx prisma migrate deploy
+      - run: npm run db:seed
+
+      - run: npx playwright install --with-deps chromium
+
+      # Playwright starts the app itself (webServer in playwright.config.ts).
+      - run: npm run test:e2e
+
+      - uses: actions/upload-artifact@v4
+        if: ${{ !cancelled() }}
+        with:
+          name: playwright-report
+          path: playwright-report/
+          retention-days: 7
