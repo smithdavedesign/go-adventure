@@ -62,7 +62,7 @@ Nothing here is blocked on more application code — the platform is built and w
 
 | # | Service | Where | Produces / env var | Unblocks | Effort | Cost |
 |---|---|---|---|---|---|---|
-| A1 | **Supabase** project | supabase.com | `DATABASE_URL` (pooled) + `DIRECT_URL` (unpooled, for migrations); enable the PostGIS extension | Production DB; replaces local Docker | ~30 min | Free→$25 |
+| ~~A1~~ | ~~**Supabase** project~~ | ✅ **Done** — project `mhftgnjjqfceojmxomls` (us-west-2). All 7 migrations applied, seed corpus live. `DATABASE_URL` (pooler) + `DIRECT_URL` set in `.env`. | — | — | — |
 | A2 | **Vercel** project | vercel.com | Deploy target; set all env vars in the dashboard | Public hosting, ISR, preview deploys | ~20 min | Free→$20 |
 | A3 | **Cloudflare R2** bucket | dash.cloudflare.com | `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME`, `R2_PUBLIC_URL` | Real media + raw source captures (replaces local `.ingestion-raw`) | ~20 min | ~$0–5 |
 | A4 | **NPS API key** | nps.gov/subjects/developer | `NPS_API_KEY` | Live NPS ingestion (M5 already built) | ~5 min | Free |
