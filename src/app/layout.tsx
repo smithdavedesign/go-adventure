@@ -58,6 +58,19 @@ export default async function RootLayout({
           </div>
         </header>
         {children}
+        <footer className="mt-auto border-t border-border py-6 text-xs text-muted-foreground">
+          <div className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-4 px-4">
+            <span>© {new Date().getFullYear()} Travel Roamer</span>
+            <nav className="flex items-center gap-4">
+              <Link href="/privacy" className="hover:text-foreground">
+                Privacy Policy
+              </Link>
+              <Link href="/terms" className="hover:text-foreground">
+                Terms of Use
+              </Link>
+            </nav>
+          </div>
+        </footer>
       </body>
     </html>
   );
