@@ -7,6 +7,8 @@ import { DestinationMap } from "@/content/destinations/DestinationMap";
 import { SafetyDisclosure } from "@/content/SafetyDisclosure";
 import { ForecastCard } from "@/content/destinations/ForecastCard";
 import { getFreshForecastNear } from "@/platform/forecasts/snapshots";
+import { AlertBanner } from "@/content/destinations/AlertBanner";
+import { getFreshAlertsNear } from "@/platform/alerts/snapshots";
 import { auth } from "@/user/auth/auth";
 import { isSaved } from "@/user/saved/queries";
 import { SaveControl } from "@/user/saved/SaveControl";
@@ -66,6 +68,7 @@ export default async function DestinationPage({
     location,
     trails,
     permit,
+    entranceFee,
     lastVerifiedAt,
   } = destination;
 
@@ -73,10 +76,13 @@ export default async function DestinationPage({
     .filter((t) => t.route)
     .map((t) => ({ name: t.name, route: t.route as [number, number][][] }));
 
-  // Fresh (non-expired) forecast near the destination, if any. Never stale.
-  const forecast = location
-    ? await getFreshForecastNear(location.lat, location.lng)
-    : null;
+  // Fresh (non-expired) forecast + official alerts near the destination. Never stale.
+  const [forecast, alerts] = location
+    ? await Promise.all([
+        getFreshForecastNear(location.lat, location.lng),
+        getFreshAlertsNear(location.lat, location.lng),
+      ])
+    : [null, null];
 
   // JSON-LD: only real on-page facts (name, description, geo). Never ratings,
   // availability, or route claims (PRD SEO). Inline JSON is CSP-safe.
@@ -134,6 +140,9 @@ export default async function DestinationPage({
           />
         </div>
 
+        {/* Official park alerts, high up — safety-forward. Only when fresh. */}
+        {alerts && <AlertBanner data={alerts} />}
+
         {/* At-a-glance facts */}
         <dl className="mt-6 grid grid-cols-2 gap-x-6 gap-y-4 sm:grid-cols-4">
           <Fact label="Difficulty" value={formatDifficulty(difficulty)} />
@@ -152,6 +161,17 @@ export default async function DestinationPage({
             </Badge>
           ))}
         </div>
+
+        {/* Entrance fee is a sourced (confirmed) fact from NPS — shown distinctly
+            from the editorial trip-budget estimate above. */}
+        {entranceFee && (
+          <p className="mt-4 text-sm text-muted-foreground">
+            <span className="font-medium text-foreground">
+              Park entrance: ${entranceFee.costUsd.toFixed(0)}
+            </span>{" "}
+            ({entranceFee.title}) · source: NPS
+          </p>
+        )}
 
         {summary && (
           <p className="mt-8 max-w-2xl text-lg leading-relaxed text-foreground">

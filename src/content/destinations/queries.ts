@@ -10,10 +10,11 @@ import { prisma } from "@/shared/config/db";
 import { fetchDestinationPoints, fetchTrailRoutes } from "@/content/geo";
 import type { DestinationFilters } from "@/content/search/filters";
 import { searchDestinationIds } from "@/content/search/search";
-import { resolvePermit } from "@/platform/content-revisions/precedence";
+import { resolveFacts, resolvePermit } from "@/platform/content-revisions/precedence";
 import type {
   DestinationCard,
   DestinationDetail,
+  EntranceFee,
   PermitRequirementType,
   ResolvedPermit,
   TrailSummary,
@@ -34,6 +35,21 @@ async function getDestinationPermit(
     officialUrl: winner.officialUrl,
     lastVerifiedAt: winner.lastVerifiedAt,
   };
+}
+
+/** Resolve the destination's fact assertions (precedence + freshness) to values. */
+async function getDestinationEntranceFee(
+  destinationId: string,
+): Promise<EntranceFee | null> {
+  const facts = await prisma.factAssertion.findMany({
+    where: { subjectType: "destination", subjectId: destinationId },
+  });
+  const resolved = resolveFacts(facts, new Date());
+  const fee = resolved.entranceFee as
+    | { costUsd?: number; title?: string }
+    | undefined;
+  if (!fee || typeof fee.costUsd !== "number") return null;
+  return { costUsd: fee.costUsd, title: fee.title ?? "Entrance fee" };
 }
 
 /**
@@ -135,10 +151,11 @@ export async function getDestinationBySlug(
   });
   if (!row) return null;
 
-  const [points, routes, permit] = await Promise.all([
+  const [points, routes, permit, entranceFee] = await Promise.all([
     fetchDestinationPoints([row.id]),
     fetchTrailRoutes(row.trails.map((t) => t.trailId)),
     getDestinationPermit(row.id),
+    getDestinationEntranceFee(row.id),
   ]);
 
   const trails: TrailSummary[] = row.trails.map((dt) => ({
@@ -173,6 +190,7 @@ export async function getDestinationBySlug(
     heroAlt: row.heroAsset?.altText ?? null,
     trails,
     permit,
+    entranceFee,
     lastVerifiedAt: row.lastVerifiedAt,
   };
 }

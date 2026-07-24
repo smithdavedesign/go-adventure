@@ -13,6 +13,13 @@ export const npsActivitySchema = z.object({
   name: z.string(),
 });
 
+/** NPS entrance fee. `cost` arrives as a string (e.g. "35.00"). */
+export const npsEntranceFeeSchema = z.object({
+  cost: z.string(),
+  title: z.string(),
+  description: z.string().optional().default(""),
+});
+
 export const npsParkSchema = z.object({
   parkCode: z.string().min(1),
   fullName: z.string().min(1),
@@ -23,6 +30,7 @@ export const npsParkSchema = z.object({
   url: z.string().url(),
   designation: z.string().optional().default(""),
   activities: z.array(npsActivitySchema).optional().default([]),
+  entranceFees: z.array(npsEntranceFeeSchema).optional().default([]),
 });
 
 export type NpsPark = z.infer<typeof npsParkSchema>;

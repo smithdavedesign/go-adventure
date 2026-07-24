@@ -16,6 +16,8 @@
     "db:reset": "prisma migrate reset --force",
     "ingest:nps": "tsx src/platform/ingestion/runner.ts",
     "forecasts:refresh": "tsx src/platform/forecasts/runner.ts",
+    "enrich:fees": "tsx scripts/enrich-nps-fees.ts",
+    "alerts:refresh": "tsx src/platform/alerts/runner.ts",
     "postinstall": "prisma generate"
   },
   "dependencies": {

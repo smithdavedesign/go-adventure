@@ -66,7 +66,12 @@ export class NpsAdapter implements SourceAdapter {
           "See docs/DEPENDENCIES.md (get a free key at nps.gov/subjects/developer).",
       );
     }
-    const params = new URLSearchParams({ api_key: this.apiKey, limit: "50" });
+    const params = new URLSearchParams({
+      api_key: this.apiKey,
+      limit: "50",
+      // `fields` appends to the default set; entranceFees isn't always default.
+      fields: "entranceFees",
+    });
     // NPS's parkCode filter expects RAW commas between codes. URLSearchParams
     // would encode them to %2C, which NPS does not split — the multi-code filter
     // then matches only the first code. Append it ourselves with raw commas.
@@ -101,6 +106,25 @@ export class NpsAdapter implements SourceAdapter {
     // Throws (ZodError) on invalid input — the pipeline dead-letters it.
     const park = npsParkSchema.parse(raw.payload);
 
+    const facts: NormalizedDestinationDraft["facts"] = [
+      // Only source-confirmable facts. Editorial facets are intentionally absent.
+      { field: "location", value: { lat: park.latitude, lng: park.longitude }, confidence: "confirmed" },
+      { field: "officialUrl", value: park.url, confidence: "confirmed" },
+      { field: "designation", value: park.designation, confidence: "confirmed" },
+    ];
+
+    // Entrance fee is a CONFIRMED, sourced fact (prefer the private-vehicle fee).
+    const fee =
+      park.entranceFees.find((f) => /vehicle/i.test(f.title)) ??
+      park.entranceFees[0];
+    if (fee) {
+      facts.push({
+        field: "entranceFee",
+        value: { costUsd: Number(fee.cost), title: fee.title },
+        confidence: "confirmed",
+      });
+    }
+
     return {
       sourceExternalId: park.parkCode,
       name: park.fullName,
@@ -110,12 +134,7 @@ export class NpsAdapter implements SourceAdapter {
       officialUrl: park.url,
       activities: mapActivities(park),
       bestMonths: [], // editorial — NPS does not provide a best-months judgement
-      facts: [
-        // Only source-confirmable facts. Editorial facets are intentionally absent.
-        { field: "location", value: { lat: park.latitude, lng: park.longitude }, confidence: "confirmed" },
-        { field: "officialUrl", value: park.url, confidence: "confirmed" },
-        { field: "designation", value: park.designation, confidence: "confirmed" },
-      ],
+      facts,
       permit: {
         // NEVER inferred. Editor confirms during review; official URL provided.
         requirementType: "unknown",

@@ -462,6 +462,24 @@ model ForecastSnapshot {
   @@index([location], type: Gist)
 }
 
+/// An expiring snapshot of official park alerts/closures (Tier 1). Same
+/// dynamic-data rule as ForecastSnapshot: sourced, attributable, dropped past
+/// `expiresAt` rather than shown stale (PRD Safety/Dynamic Information). Queried
+/// by proximity to the destination point. `location` written via raw SQL.
+model AlertSnapshot {
+  id         String                                 @id @default(uuid()) @db.Uuid
+  location   Unsupported("geography(Point, 4326)")?
+  provider   String // "nps"
+  externalId String // parkCode
+  observedAt DateTime
+  expiresAt  DateTime
+  payload    Json // { alerts: [{ title, category, url, description }] }
+  createdAt  DateTime                               @default(now())
+
+  @@index([expiresAt])
+  @@index([location], type: Gist)
+}
+
 model IngestionRun {
   id                String          @id @default(uuid()) @db.Uuid
   sourceName        String

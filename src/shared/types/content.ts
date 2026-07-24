@@ -116,10 +116,15 @@ export type ResolvedPermit = {
   lastVerifiedAt: Date;
 };
 
+/** A sourced entrance-fee fact (confirmed, from the land manager). */
+export type EntranceFee = { costUsd: number; title: string };
+
 export type DestinationDetail = DestinationCard & {
   trails: TrailSummary[];
   /** Current permit requirement, or null when there's no fresh permit info. */
   permit: ResolvedPermit | null;
+  /** Official entrance fee (sourced, confirmed), or null if none published. */
+  entranceFee: EntranceFee | null;
   /** When the destination's facts were last verified (null if never). */
   lastVerifiedAt: Date | null;
 };
