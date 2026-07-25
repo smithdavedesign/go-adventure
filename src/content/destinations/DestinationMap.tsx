@@ -64,6 +64,7 @@ export function DestinationMap({
   routes,
   area,
   destinationName,
+  hoveredTrailName,
   className,
 }: {
   center: Coordinates;
@@ -71,12 +72,15 @@ export function DestinationMap({
   area?: MultiPolygonCoords | null;
   /** If supplied, shown in a popup on the destination marker. */
   destinationName?: string;
+  /** Trail name to highlight on the map (route line brightens). */
+  hoveredTrailName?: string | null;
   className?: string;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
   const initialBoundsRef = useRef<LngLatBounds | null>(null);
   const [failed, setFailed] = useState(false);
+  const [mapLoaded, setMapLoaded] = useState(false);
 
   useEffect(() => {
     if (!containerRef.current) return;
@@ -109,6 +113,7 @@ export function DestinationMap({
 
       map.on("load", () => {
         if (!map) return;
+        setMapLoaded(true);
 
         new Marker({ color: "#e05d2a" })
           .setLngLat([center.lng, center.lat])
@@ -217,6 +222,38 @@ export function DestinationMap({
       mapRef.current = null;
     };
   }, [area, center, routes]);
+
+  // Highlight the hovered trail route imperatively (no map re-init).
+  useEffect(() => {
+    const map = mapRef.current;
+    if (!map || !mapLoaded) return;
+    if (!map.getLayer("trails-line")) return;
+
+    if (hoveredTrailName) {
+      map.setPaintProperty("trails-casing", "line-width", [
+        "case",
+        ["==", ["get", "name"], hoveredTrailName],
+        10,
+        7,
+      ]);
+      map.setPaintProperty("trails-line", "line-color", [
+        "case",
+        ["==", ["get", "name"], hoveredTrailName],
+        "#ff4500",
+        "#e05d2a",
+      ]);
+      map.setPaintProperty("trails-line", "line-width", [
+        "case",
+        ["==", ["get", "name"], hoveredTrailName],
+        6,
+        4,
+      ]);
+    } else {
+      map.setPaintProperty("trails-casing", "line-width", 7);
+      map.setPaintProperty("trails-line", "line-color", "#e05d2a");
+      map.setPaintProperty("trails-line", "line-width", 4);
+    }
+  }, [hoveredTrailName, mapLoaded]);
 
   const resetView = () => {
     const map = mapRef.current;

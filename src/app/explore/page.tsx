@@ -12,6 +12,8 @@ import {
   type DroppedLabel,
 } from "@/content/search/RelaxationBanner";
 import { DestinationCard } from "@/content/destinations/DestinationCard";
+import { ExploreViewToggle } from "@/content/explore/ExploreViewToggle";
+import { ExploreMapView } from "@/content/explore/ExploreMapView";
 import {
   formatDifficulty,
   formatMonthShort,
@@ -50,7 +52,10 @@ export default async function ExplorePage({
 }: {
   searchParams: Promise<Record<string, string | string[] | undefined>>;
 }) {
-  const filters = parseFilters(await searchParams);
+  const raw = await searchParams;
+  const filters = parseFilters(raw);
+  const isMapView = raw.view === "map";
+
   const { destinations, dropped, noKeywordMatch } =
     await resolveExplore(filters);
 
@@ -62,17 +67,24 @@ export default async function ExplorePage({
 
   return (
     <main className="mx-auto max-w-6xl px-4 py-8">
-      <div className="mb-8">
-        <h1 className="text-2xl font-semibold tracking-tight">
-          Explore destinations
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {destinations.length === 0
-            ? "No matches yet — adjust your search."
-            : wasRelaxed
-              ? `Showing the ${destinations.length} closest ${destinations.length === 1 ? "result" : "results"}.`
-              : `${destinations.length} matching ${destinations.length === 1 ? "destination" : "destinations"}.`}
-        </p>
+      <div className="mb-6 flex items-start justify-between gap-4">
+        <div>
+          <h1 className="text-2xl font-semibold tracking-tight">
+            Explore destinations
+          </h1>
+          <p className="mt-1 text-sm text-muted-foreground">
+            {destinations.length === 0
+              ? "No matches yet — adjust your search."
+              : wasRelaxed
+                ? `Showing the ${destinations.length} closest ${destinations.length === 1 ? "result" : "results"}.`
+                : `${destinations.length} matching ${destinations.length === 1 ? "destination" : "destinations"}.`}
+          </p>
+        </div>
+
+        {/* List / Map toggle — needs useSearchParams → Suspense boundary. */}
+        <Suspense fallback={<div className="h-10 w-28 animate-pulse rounded-lg bg-secondary" />}>
+          <ExploreViewToggle />
+        </Suspense>
       </div>
 
       {/* useSearchParams inside these client components requires a Suspense boundary. */}
@@ -83,7 +95,12 @@ export default async function ExplorePage({
       <div className="mt-8 space-y-6">
         {wasRelaxed && <RelaxationBanner dropped={droppedLabels} />}
 
-        {destinations.length > 0 ? (
+        {isMapView ? (
+          /* Map view — full-width MapLibre with a pin per destination */
+          <Suspense fallback={<div className="h-[580px] animate-pulse rounded-xl bg-secondary" />}>
+            <ExploreMapView destinations={destinations} />
+          </Suspense>
+        ) : destinations.length > 0 ? (
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {destinations.map((d) => (
               <DestinationCard key={d.id} destination={d} />

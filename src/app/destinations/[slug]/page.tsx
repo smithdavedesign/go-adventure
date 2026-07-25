@@ -6,7 +6,7 @@ import {
   getDestinationMetadataBySlug,
 } from "@/content/destinations/queries";
 import { HeroPlaceholder } from "@/content/destinations/HeroPlaceholder";
-import { DestinationMap } from "@/content/destinations/DestinationMap";
+import { DestinationMapWithTrails } from "@/content/destinations/DestinationMapWithTrails";
 import { SafetyDisclosure } from "@/content/SafetyDisclosure";
 import { ForecastCard } from "@/content/destinations/ForecastCard";
 import { getFreshForecastNear } from "@/platform/forecasts/snapshots";
@@ -87,16 +87,7 @@ export default async function DestinationPage({
     lastVerifiedAt,
   } = destination;
 
-  const mapRoutes = trails
-    .filter((t) => t.route)
-    .map((t) => ({ name: t.name, route: t.route as [number, number][][] }));
-
-  // Tier 4 editorial depth: nearby airports (from the point) and the difficulty
-  // range grounded in the actual representative trails.
   const airports = location ? nearestAirports(location, 3) : [];
-  const trailDifficultyRange = summarizeTrailDifficulty(
-    trails.map((t) => t.difficulty),
-  );
 
   // Fresh (non-expired) forecast + official alerts near the destination. Never stale.
   const [forecast, alerts] = location
@@ -225,66 +216,13 @@ export default async function DestinationPage({
           </section>
         )}
 
-        {/* Map (progressive enhancement — page reads fully without it). */}
-        {location && (
-          <section className="mt-10">
-            <h2 className="mb-3 text-lg font-semibold">Map</h2>
-            <DestinationMap
-              center={location}
-              routes={mapRoutes}
-              area={area}
-              destinationName={name}
-              className="h-[420px] w-full"
-            />
-          </section>
-        )}
-
-        {/* Trail listing */}
-        <section className="mt-10">
-          <h2 className="mb-4 text-lg font-semibold">
-            Trails ({trails.length})
-            {trailDifficultyRange && (
-              <span className="ml-2 font-normal text-muted-foreground">
-                · {trailDifficultyRange}
-              </span>
-            )}
-          </h2>
-          {trails.length > 0 ? (
-            <ul className="divide-y divide-border rounded-xl border border-border">
-              {trails.map((t) => (
-                <li key={t.id}>
-                  <Link
-                    href={`/trails/${t.slug}`}
-                    className="flex flex-col gap-1 p-4 transition-colors hover:bg-secondary sm:flex-row sm:items-center sm:justify-between"
-                  >
-                    <div>
-                      <div className="flex items-center gap-2">
-                        <span className="font-medium">{t.name}</span>
-                        {t.isRepresentative && (
-                          <Badge variant="brand">Representative</Badge>
-                        )}
-                      </div>
-                      <div className="mt-1 flex flex-wrap gap-x-3 text-sm text-muted-foreground">
-                        <span>{t.distanceMiles} mi</span>
-                        <span aria-hidden>·</span>
-                        <span>{t.elevationGainFt.toLocaleString()} ft gain</span>
-                        <span aria-hidden>·</span>
-                        <span>{formatDifficulty(t.difficulty)}</span>
-                        <span aria-hidden>·</span>
-                        <span>~{t.durationHours} h</span>
-                      </div>
-                    </div>
-                    <span className="text-sm text-muted-foreground">View →</span>
-                  </Link>
-                </li>
-              ))}
-            </ul>
-          ) : (
-            <p className="text-sm text-muted-foreground">
-              No representative trails listed yet.
-            </p>
-          )}
-        </section>
+        {/* Map + trail listing (client component — shares hover state). */}
+        <DestinationMapWithTrails
+          center={location}
+          area={area}
+          destinationName={name}
+          trails={trails}
+        />
 
         {/* Getting there — nearest airports (great-circle; airfare out of scope). */}
         {airports.length > 0 && (
@@ -368,18 +306,4 @@ function Fact({
       {note && <dd className="text-xs text-muted-foreground">{note}</dd>}
     </div>
   );
-}
-
-const DIFFICULTY_ORDER = ["easy", "moderate", "hard", "expert"] as const;
-
-/** "Trails easy–hard" from the representative trails' difficulties, or null. */
-function summarizeTrailDifficulty(difficulties: string[]): string | null {
-  const ranks = difficulties
-    .map((d) => DIFFICULTY_ORDER.indexOf(d as (typeof DIFFICULTY_ORDER)[number]))
-    .filter((i) => i >= 0);
-  if (ranks.length === 0) return null;
-  const lo = DIFFICULTY_ORDER[Math.min(...ranks)];
-  const hi = DIFFICULTY_ORDER[Math.max(...ranks)];
-  const cap = (s: string) => s[0].toUpperCase() + s.slice(1);
-  return lo === hi ? cap(lo) : `${cap(lo)}–${cap(hi)}`;
 }
