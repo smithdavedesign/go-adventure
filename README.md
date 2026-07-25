@@ -18,14 +18,14 @@ An adventure discovery platform for outdoor travelers (backpackers, hikers, clim
 
 ## Status
 
-**Milestones 0–3 are done** — see [`docs/ROADMAP.md`](docs/ROADMAP.md) for the full sequence and what's next (M4: full canonical data model + provenance). What works today, running locally:
+**The Phase 1 platform is built end-to-end (M0–M11)** — see [`docs/ROADMAP.md`](docs/ROADMAP.md) for the full sequence and current state. What works today:
 
 - **Home** → **Explore** (destination card grid, five facet filters, typo-tolerant keyword search) → **Destination** (hero, facts, MapLibre map, trail list, safety disclosure) → **Trail**.
 - **Zero-result relaxation**: an impossible filter combination relaxes the strictest constraint (budget → month → trip length → difficulty, never activity) with a transparent banner and removable chips, instead of a dead-end "no results" — a binding PRD behavior, covered by a Playwright test.
 
 Also built (visit after seeding): **`/admin`** (editorial tooling — data-health dashboard, review queue, draft editor, publish; interim password gate, default `admin`), **`/explore`** search + relaxation, and per-destination permit info, maps, and weather.
 
-All content is **fabricated seed data** for building the UI — nothing is sourced or publishable. Real content arrives via the ingestion pipeline and editorial review, then a human editor publishing per rubric.
+The launch corpus is now real, not seed data: **28 iconic national parks are published live** — each with an NPS-sourced summary, entrance fee, and live park alerts, plus representative OpenStreetMap trails, Open-Meteo forecasts, and (for most) an open-licensed Wikimedia hero photo. Every source is attributed and dynamic data is freshness-gated. What remains is editorial completion to the full launch set plus human/legal sign-off ([launch-readiness](docs/launch-readiness.md)) — not more platform code.
 
 - [`docs/Adventure_Discovery_PRD_v1.1.md`](docs/Adventure_Discovery_PRD_v1.1.md) — the binding product spec.
 - [`docs/ARCHITECTURE.md`](docs/ARCHITECTURE.md) — C4 diagrams, ERD, ingestion/auth/search flows, technical decisions.

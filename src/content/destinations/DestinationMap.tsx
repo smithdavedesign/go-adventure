@@ -221,7 +221,7 @@ export function DestinationMap({
       map?.remove();
       mapRef.current = null;
     };
-  }, [area, center, routes]);
+  }, [area, center, routes, destinationName]);
 
   // Highlight the hovered trail route imperatively (no map re-init).
   useEffect(() => {

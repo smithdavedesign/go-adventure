@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { DestinationMap } from "./DestinationMap";
 import { Badge } from "@/shared/ui/badge";
@@ -38,11 +38,22 @@ export function DestinationMapWithTrails({
 }) {
   const [hoveredTrailName, setHoveredTrailName] = useState<string | null>(null);
 
-  const mapRoutes = trails
-    .filter((t) => t.route)
-    .map((t) => ({ name: t.name, route: t.route as [number, number][][] }));
+  // Memoized so hovering a trail (which re-renders this component) doesn't hand
+  // DestinationMap a fresh `routes` array each time — otherwise its init effect
+  // would tear down and rebuild the whole map on every hover, flashing the map
+  // and defeating the highlight. Keyed on `trails`, which is stable per page.
+  const mapRoutes = useMemo(
+    () =>
+      trails
+        .filter((t) => t.route)
+        .map((t) => ({ name: t.name, route: t.route as [number, number][][] })),
+    [trails],
+  );
 
-  const difficultyRange = summarizeTrailDifficulty(trails.map((t) => t.difficulty));
+  const difficultyRange = useMemo(
+    () => summarizeTrailDifficulty(trails.map((t) => t.difficulty)),
+    [trails],
+  );
 
   return (
     <>

@@ -1,7 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { useRouter } from "next/navigation";
 import {
   LngLatBounds,
   Map as MapLibreMap,
@@ -29,7 +28,6 @@ export function ExploreMapView({
   destinations: DestinationCard[];
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
-  const router = useRouter();
   const [failed, setFailed] = useState(false);
 
   const pinned = destinations.filter((d) => d.location !== null);
@@ -44,8 +42,8 @@ export function ExploreMapView({
 
     try {
       // Start view: if there are pins, compute bounds; otherwise show continental US.
-      let initialCenter: [number, number] = [-98.35, 39.5];
-      let initialZoom = 3.5;
+      const initialCenter: [number, number] = [-98.35, 39.5];
+      const initialZoom = 3.5;
 
       const bounds =
         pinned.length > 0

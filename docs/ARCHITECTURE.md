@@ -241,6 +241,16 @@ erDiagram
         json        payload
     }
 
+    ALERT_SNAPSHOT {
+        uuid        id              PK
+        geography   location        "PostGIS Point — GiST indexed"
+        string      provider        "nps"
+        string      externalId      "parkCode"
+        datetime    observedAt
+        datetime    expiresAt       "never serve beyond expiry"
+        json        payload         "active alerts: title, category, url, description"
+    }
+
     USER {
         uuid        id              PK
         string      email           "unique"
@@ -513,13 +523,13 @@ Bounded domains within the monorepo. Explicit import rules prevent coupling and 
     SafetyDisclosure.tsx
 
   /platform         ← Platform Domain (all write paths for data operations)
-        ingestion/        pipeline + NPS/recgov/osm adapters + raw store + checksum
+    ingestion/        pipeline + NPS/recgov/osm adapters + raw store + checksum
     outbox/           emit + processor
     content-revisions/ fact precedence + freshness/expiry
     publishing/       draft-validation schema + publish/unpublish workflow
     forecasts/        Open-Meteo client + expiring snapshots
-        alerts/           NPS alerts client + AlertSnapshot freshness gating
-        media/            Wikimedia enrichment + rights/credit normalization
+    alerts/           NPS alerts client + AlertSnapshot freshness gating
+    media/            Wikimedia enrichment + rights/credit normalization
     ai/               provider interface + Gemini/mock + PII-guarded packets
     analytics/        event dictionary + consent-gated track
     security/         rate limiter
