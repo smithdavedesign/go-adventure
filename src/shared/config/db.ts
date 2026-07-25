@@ -13,11 +13,17 @@ function parsePositiveInt(value: string | undefined, fallback: number): number {
   return Number.isFinite(parsed) && parsed > 0 ? parsed : fallback;
 }
 
-// Serverless runtimes can scale horizontally; each instance opening a large pg
-// pool quickly exhausts Supabase's session-mode client cap.
+// Serverless scales horizontally, so total connections = (instances × poolMax).
+// Supabase's SESSION-mode pooler caps at ~15 clients, so even a small per-instance
+// pool exhausts it under modest concurrency (EMAXCONNSESSION). Default to 1 in
+// production — the standard serverless/PgBouncer setting (`connection_limit=1`):
+// it maximizes the number of concurrent instances before the cap and is ideal
+// once DATABASE_URL points at the TRANSACTION-mode pooler (port 6543), which is
+// the real fix (it multiplexes many clients onto few connections). Override with
+// PRISMA_POOL_MAX if you keep session-mode and know your instance ceiling.
 const poolMax = parsePositiveInt(
   process.env.PRISMA_POOL_MAX,
-  process.env.NODE_ENV === "production" ? 3 : 10,
+  process.env.NODE_ENV === "production" ? 1 : 10,
 );
 
 const adapter = new PrismaPg({
