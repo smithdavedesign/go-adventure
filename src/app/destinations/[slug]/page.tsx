@@ -6,6 +6,7 @@ import {
   getDestinationMetadataBySlug,
 } from "@/content/destinations/queries";
 import { HeroPlaceholder } from "@/content/destinations/HeroPlaceholder";
+import { PhotoGallery } from "@/content/destinations/PhotoGallery";
 import { DestinationMapWithTrails } from "@/content/destinations/DestinationMapWithTrails";
 import { SafetyDisclosure } from "@/content/SafetyDisclosure";
 import { ForecastCard } from "@/content/destinations/ForecastCard";
@@ -89,6 +90,7 @@ export default async function DestinationPage({
     permit,
     entranceFee,
     highlights,
+    photos,
     lastVerifiedAt,
   } = destination;
 
@@ -220,6 +222,9 @@ export default async function DestinationPage({
             </ul>
           </section>
         )}
+
+        {/* Photo gallery (openly-licensed, per-image credit). */}
+        <PhotoGallery photos={photos} />
 
         {/* Map + trail listing (client component — shares hover state). */}
         <DestinationMapWithTrails

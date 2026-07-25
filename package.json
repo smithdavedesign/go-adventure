@@ -18,6 +18,7 @@
     "forecasts:refresh": "tsx src/platform/forecasts/runner.ts",
     "enrich:fees": "tsx scripts/enrich-nps-fees.ts",
     "enrich:media": "tsx scripts/enrich-media-wikimedia.ts",
+    "enrich:gallery": "tsx scripts/enrich-media-gallery.ts",
     "enrich:highlights": "tsx scripts/enrich-highlights.ts",
     "set-admin": "tsx scripts/set-admin.ts",
     "alerts:refresh": "tsx src/platform/alerts/runner.ts",

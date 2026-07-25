@@ -212,6 +212,11 @@ export async function getDestinationBySlug(
     where: { slug, status: "published" },
     include: {
       heroAsset: { select: { altText: true, originalUrl: true, creatorCredit: true } },
+      photos: {
+        where: { moderationStatus: "approved", originalUrl: { not: null } },
+        select: { id: true, originalUrl: true, creatorCredit: true, altText: true },
+        orderBy: { createdAt: "asc" },
+      },
       trails: {
         where: { trail: { status: "published" } },
         orderBy: { editorialOrder: "asc" },
@@ -243,6 +248,15 @@ export async function getDestinationBySlug(
     route: routes.get(dt.trailId) ?? null,
   }));
 
+  const photos = row.photos
+    .filter((p): p is typeof p & { originalUrl: string } => !!p.originalUrl)
+    .map((p) => ({
+      id: p.id,
+      imageUrl: p.originalUrl,
+      credit: p.creatorCredit,
+      alt: p.altText,
+    }));
+
   return {
     id: row.id,
     name: row.name,
@@ -266,6 +280,7 @@ export async function getDestinationBySlug(
     permit,
     entranceFee: facts.entranceFee,
     highlights: facts.highlights,
+    photos,
     lastVerifiedAt: row.lastVerifiedAt,
   };
 }

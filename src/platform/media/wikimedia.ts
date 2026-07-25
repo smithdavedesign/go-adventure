@@ -95,6 +95,87 @@ export async function fetchHeroByCommonsFile(
   return heroFromCommonsFile(fileName);
 }
 
+/** Titles that are clearly not scenic photos (maps, diagrams, signs, logos). */
+const NON_PHOTO = /\b(map|diagram|logo|sign|chart|plan|seal|flag|panorama\.svg)\b|\.svg$/i;
+
+/**
+ * Find several openly-licensed landscape photos for a park (gallery). Two calls:
+ * a Commons file search, then one batched imageinfo lookup; filters to CC/PD
+ * landscape images and skips maps/diagrams and an excluded file (the hero).
+ */
+export async function fetchParkPhotos(
+  query: string,
+  count = 6,
+  excludeFileName?: string,
+): Promise<HeroImage[]> {
+  const searchRes = await fetch(
+    `${COMMONS_API}?action=query&format=json&list=search&srnamespace=6&srlimit=25&srsearch=${encodeURIComponent(
+      query,
+    )}`,
+    { headers: { "User-Agent": UA } },
+  );
+  if (!searchRes.ok) return [];
+  const search = (await searchRes.json()) as {
+    query?: { search?: { title: string }[] };
+  };
+  const titles = (search.query?.search ?? [])
+    .map((s) => s.title)
+    .filter((t) => !NON_PHOTO.test(t));
+  if (titles.length === 0) return [];
+
+  const infoRes = await fetch(
+    `${COMMONS_API}?action=query&format=json&prop=imageinfo&iiprop=extmetadata|url|size&titles=${encodeURIComponent(
+      titles.join("|"),
+    )}`,
+    { headers: { "User-Agent": UA } },
+  );
+  if (!infoRes.ok) return [];
+  const info = (await infoRes.json()) as {
+    query?: {
+      pages?: Record<
+        string,
+        {
+          title?: string;
+          imageinfo?: {
+            url?: string;
+            width?: number;
+            height?: number;
+            extmetadata?: Record<string, { value?: string }>;
+          }[];
+        }
+      >;
+    };
+  };
+
+  const out: HeroImage[] = [];
+  const seen = new Set<string>();
+  for (const page of Object.values(info.query?.pages ?? {})) {
+    const ii = page.imageinfo?.[0];
+    const title = page.title ?? "";
+    const fileName = title.replace(/^File:/, "");
+    if (!ii?.url || !fileName) continue;
+    if (excludeFileName && fileName === excludeFileName) continue;
+    if (NON_PHOTO.test(fileName) || seen.has(fileName)) continue;
+    // Landscape and a reasonable size — skips portraits, icons, thumbnails.
+    if (!ii.width || !ii.height || ii.width < ii.height || ii.width < 1200) continue;
+    const licence = ii.extmetadata?.LicenseShortName?.value ?? "";
+    if (!isAcceptableLicence(licence)) continue;
+    seen.add(fileName);
+    out.push({
+      imageUrl: ii.url,
+      fileName,
+      licence,
+      licenceUrl: ii.extmetadata?.LicenseUrl?.value ?? null,
+      creatorCredit: ii.extmetadata?.Artist?.value
+        ? stripHtml(ii.extmetadata.Artist.value)
+        : "Wikimedia Commons",
+      sourcePageUrl: `https://commons.wikimedia.org/wiki/File:${encodeURIComponent(fileName)}`,
+    });
+    if (out.length >= count) break;
+  }
+  return out;
+}
+
 /** Find an openly-licensed hero image for a park, or null. */
 export async function fetchParkHero(
   wikipediaTitle: string,

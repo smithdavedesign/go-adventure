@@ -124,6 +124,14 @@ export type ResolvedPermit = {
 /** A sourced entrance-fee fact (confirmed, from the land manager). */
 export type EntranceFee = { costUsd: number; title: string };
 
+/** A gallery photo with its required attribution. */
+export type GalleryPhoto = {
+  id: string;
+  imageUrl: string;
+  credit: string | null;
+  alt: string | null;
+};
+
 export type DestinationDetail = DestinationCard & {
   /** Optional destination boundary geometry (GeoJSON MultiPolygon coordinates). */
   area: MultiPolygonCoords | null;
@@ -134,6 +142,8 @@ export type DestinationDetail = DestinationCard & {
   entranceFee: EntranceFee | null;
   /** Brief editorial highlights (why go), or empty when none published. */
   highlights: string[];
+  /** Openly-licensed gallery photos (excludes the hero), or empty. */
+  photos: GalleryPhoto[];
   /** When the destination's facts were last verified (null if never). */
   lastVerifiedAt: Date | null;
 };
