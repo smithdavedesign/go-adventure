@@ -4,8 +4,11 @@
  *
  * CSP notes:
  *  - `connect-src`/`img-src` allow the specific external hosts the app uses:
- *    MapLibre demo tiles (dev), Open-Meteo, Google OAuth. Tighten to the
- *    production tile provider when ADR-0005 is decided.
+ *    MapTiler (production tiles, ADR-0005), the MapLibre demo style (local dev),
+ *    Open-Meteo, `upload.wikimedia.org` (hero photos), and Google OAuth.
+ *  - `worker-src 'self' blob:` is REQUIRED by MapLibre GL: it renders tiles in a
+ *    Web Worker created from a `blob:` URL. Without it the worker falls back to
+ *    `default-src 'self'`, is blocked, and every map renders blank.
  *  - `'unsafe-inline'` for styles is required by Tailwind's injected styles; a
  *    nonce-based strict CSP is a hardening follow-up (needs middleware nonces).
  */
@@ -29,6 +32,8 @@ const csp = [
   "style-src 'self' 'unsafe-inline'",
   "img-src 'self' data: blob: https://demotiles.maplibre.org https://*.basemaps.cartocdn.com https://api.maptiler.com https://*.maptiler.com https://upload.wikimedia.org",
   "connect-src 'self' https://demotiles.maplibre.org https://api.maptiler.com https://*.maptiler.com https://api.open-meteo.com https://accounts.google.com",
+  // MapLibre GL runs its tile worker from a blob: URL — without this the map is blank.
+  "worker-src 'self' blob:",
   "font-src 'self' data:",
 ].join("; ");
 
