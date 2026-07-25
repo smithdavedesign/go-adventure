@@ -105,18 +105,25 @@ export function ExploreMapView({
             </div>`,
           );
 
+          // MapLibre positions the marker element with its own inline
+          // `transform: translate(...)`. The hover effect must go on an INNER
+          // child — scaling the outer element would clobber that translate and
+          // fling the pin to the top-left corner.
           const el = document.createElement("div");
-          el.style.cssText = `
+          el.style.cursor = "pointer";
+          const pin = document.createElement("div");
+          pin.style.cssText = `
             width: 28px; height: 28px; border-radius: 50%;
             background: #e05d2a; border: 3px solid #fff;
             box-shadow: 0 2px 6px rgba(0,0,0,0.3);
-            cursor: pointer; transition: transform 0.15s;
+            transition: transform 0.15s;
           `;
+          el.appendChild(pin);
           el.addEventListener("mouseenter", () => {
-            el.style.transform = "scale(1.2)";
+            pin.style.transform = "scale(1.2)";
           });
           el.addEventListener("mouseleave", () => {
-            el.style.transform = "scale(1)";
+            pin.style.transform = "scale(1)";
           });
 
           new Marker({ element: el })
