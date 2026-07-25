@@ -40,6 +40,9 @@ export default function RootLayout({
                 <Link href="/browse" className="hover:text-foreground">
                   Browse
                 </Link>
+                <Link href="/compare" className="hover:text-foreground">
+                  Compare
+                </Link>
                 <UserNav />
               </nav>
             </div>
