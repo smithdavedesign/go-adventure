@@ -9,7 +9,7 @@
  */
 import { prisma } from "@/shared/config/db";
 import { Prisma } from "@/generated/prisma/client";
-import type { Coordinates } from "@/shared/types/content";
+import type { Coordinates, MultiPolygonCoords } from "@/shared/types/content";
 
 /** Map of destination id → decoded point (rows without a point are omitted). */
 export async function fetchDestinationPoints(
@@ -57,6 +57,29 @@ export async function fetchTrailRoutes(
 
   for (const r of rows) {
     if (r.route?.coordinates) out.set(r.id, r.route.coordinates);
+  }
+  return out;
+}
+
+/** Map of destination id -> area boundary (GeoJSON MultiPolygon coordinates). */
+export async function fetchDestinationAreas(
+  ids: string[],
+): Promise<Map<string, MultiPolygonCoords>> {
+  const out = new Map<string, MultiPolygonCoords>();
+  if (ids.length === 0) return out;
+
+  const rows = await prisma.$queryRaw<
+    { id: string; area: { type: string; coordinates: MultiPolygonCoords } | null }[]
+  >(Prisma.sql`
+    SELECT id::text AS id,
+           ST_AsGeoJSON(area)::json AS area
+    FROM "Destination"
+    WHERE id = ANY(ARRAY[${Prisma.join(ids)}]::uuid[])
+      AND area IS NOT NULL
+  `);
+
+  for (const r of rows) {
+    if (r.area?.coordinates) out.set(r.id, r.area.coordinates);
   }
   return out;
 }

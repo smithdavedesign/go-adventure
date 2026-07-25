@@ -1,17 +1,21 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import { Map as MapLibreMap, Marker, NavigationControl } from "maplibre-gl";
+import {
+  LngLatBounds,
+  Map as MapLibreMap,
+  Marker,
+  NavigationControl,
+  Popup,
+} from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
-import type { Coordinates } from "@/shared/types/content";
+import type { Coordinates, MultiPolygonCoords } from "@/shared/types/content";
 
 /**
  * Destination map (progressive enhancement).
  *
  * MapLibre GL is the renderer only. The tile source below is MapLibre's public
- * DEMO style — a local-dev placeholder, NOT a production tile provider. Picking
- * the real provider (with attribution, volume limits, and fallback) is
- * docs/adr/0005-map-tile-provider.md, still open.
+ * DEMO style only when no key is configured in local dev.
  *
  * Graceful degradation is a hard PRD requirement: a map failure must never block
  * reading or saving a destination. Any init error is caught and replaced with a
@@ -27,16 +31,51 @@ const TILE_STYLE_URL = MAPTILER_KEY
 
 type TrailRoute = { name: string; route: [number, number][][] };
 
+function buildInitialBounds(
+  center: Coordinates,
+  routes: TrailRoute[],
+  area?: MultiPolygonCoords | null,
+): LngLatBounds {
+  const bounds = new LngLatBounds([center.lng, center.lat], [center.lng, center.lat]);
+
+  for (const route of routes) {
+    for (const line of route.route) {
+      for (const point of line) {
+        bounds.extend(point);
+      }
+    }
+  }
+
+  if (area) {
+    for (const polygon of area) {
+      for (const ring of polygon) {
+        for (const point of ring) {
+          bounds.extend(point);
+        }
+      }
+    }
+  }
+
+  return bounds;
+}
+
 export function DestinationMap({
   center,
   routes,
+  area,
+  destinationName,
   className,
 }: {
   center: Coordinates;
   routes: TrailRoute[];
+  area?: MultiPolygonCoords | null;
+  /** If supplied, shown in a popup on the destination marker. */
+  destinationName?: string;
   className?: string;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<MapLibreMap | null>(null);
+  const initialBoundsRef = useRef<LngLatBounds | null>(null);
   const [failed, setFailed] = useState(false);
 
   useEffect(() => {
@@ -48,13 +87,18 @@ export function DestinationMap({
     };
 
     try {
+      const initialBounds = buildInitialBounds(center, routes, area);
+      initialBoundsRef.current = initialBounds;
+
+      const hasRouteOrArea = routes.length > 0 || !!area;
       map = new MapLibreMap({
         container: containerRef.current,
         style: TILE_STYLE_URL,
         center: [center.lng, center.lat],
-        zoom: 9,
+        zoom: hasRouteOrArea ? 9 : 11,
         attributionControl: { compact: true },
       });
+      mapRef.current = map;
 
       // If the style/tiles fail to load (offline, demo server down), fall back
       // rather than showing a broken grey box. This is an event callback, so
@@ -66,9 +110,54 @@ export function DestinationMap({
       map.on("load", () => {
         if (!map) return;
 
-        new Marker({ color: "#2f855a" })
+        new Marker({ color: "#e05d2a" })
           .setLngLat([center.lng, center.lat])
+          .setPopup(
+            new Popup({ offset: 28, closeButton: false }).setText(
+              destinationName ?? "",
+            ),
+          )
           .addTo(map);
+
+        if (area) {
+          map.addSource("destination-area", {
+            type: "geojson",
+            data: {
+              type: "FeatureCollection",
+              features: [
+                {
+                  type: "Feature",
+                  properties: {},
+                  geometry: {
+                    type: "MultiPolygon",
+                    coordinates: area,
+                  },
+                },
+              ],
+            },
+          });
+
+          map.addLayer({
+            id: "destination-area-fill",
+            type: "fill",
+            source: "destination-area",
+            paint: {
+              "fill-color": "#2f855a",
+              "fill-opacity": 0.08,
+            },
+          });
+
+          map.addLayer({
+            id: "destination-area-outline",
+            type: "line",
+            source: "destination-area",
+            paint: {
+              "line-color": "#2f855a",
+              "line-width": 2,
+              "line-opacity": 0.7,
+            },
+          });
+        }
 
         // Trail routes as one GeoJSON line layer.
         const features = routes
@@ -84,17 +173,37 @@ export function DestinationMap({
             type: "geojson",
             data: { type: "FeatureCollection", features },
           });
+
+          // White casing below the colored line — essential for contrast on
+          // the outdoor basemap which already shows trails in similar greens.
+          map.addLayer({
+            id: "trails-casing",
+            type: "line",
+            source: "trails",
+            paint: {
+              "line-color": "#ffffff",
+              "line-width": 7,
+              "line-opacity": 0.85,
+            },
+          });
+
           map.addLayer({
             id: "trails-line",
             type: "line",
             source: "trails",
             paint: {
-              "line-color": "#2f855a",
-              "line-width": 3,
-              "line-opacity": 0.85,
+              "line-color": "#e05d2a",
+              "line-width": 4,
+              "line-opacity": 1,
             },
           });
         }
+
+        map.fitBounds(initialBounds, {
+          padding: { top: 48, right: 48, bottom: 48, left: 48 },
+          maxZoom: 12,
+          duration: 0,
+        });
       });
     } catch {
       // Synchronous init failure (e.g. WebGL unavailable). Defer the state
@@ -105,8 +214,20 @@ export function DestinationMap({
     return () => {
       cancelled = true;
       map?.remove();
+      mapRef.current = null;
     };
-  }, [center, routes]);
+  }, [area, center, routes]);
+
+  const resetView = () => {
+    const map = mapRef.current;
+    const bounds = initialBoundsRef.current;
+    if (!map || !bounds) return;
+    map.fitBounds(bounds, {
+      padding: { top: 48, right: 48, bottom: 48, left: 48 },
+      maxZoom: 12,
+      duration: 350,
+    });
+  };
 
   if (failed) {
     return (
@@ -122,9 +243,18 @@ export function DestinationMap({
   }
 
   return (
-    <div
-      ref={containerRef}
-      className={"overflow-hidden rounded-xl border border-border " + (className ?? "")}
-    />
+    <div className="relative">
+      <div
+        ref={containerRef}
+        className={"overflow-hidden rounded-xl border border-border " + (className ?? "")}
+      />
+      <button
+        type="button"
+        onClick={resetView}
+        className="absolute left-3 top-3 rounded-md border border-border bg-background/95 px-2.5 py-1.5 text-xs font-medium text-foreground shadow-sm backdrop-blur hover:bg-background"
+      >
+        Reset view
+      </button>
+    </div>
   );
 }

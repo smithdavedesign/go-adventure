@@ -84,7 +84,8 @@ export default async function TrailPage({
           <DestinationMap
             center={center}
             routes={route ? [{ name, route }] : []}
-            className="h-[360px] w-full"
+            destinationName={name}
+            className="h-[420px] w-full"
           />
         </section>
       )}

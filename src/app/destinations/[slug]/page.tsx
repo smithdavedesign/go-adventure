@@ -79,6 +79,7 @@ export default async function DestinationPage({
     budgetLowUsd,
     budgetHighUsd,
     location,
+    area,
     trails,
     permit,
     entranceFee,
@@ -231,7 +232,9 @@ export default async function DestinationPage({
             <DestinationMap
               center={location}
               routes={mapRoutes}
-              className="h-[380px] w-full"
+              area={area}
+              destinationName={name}
+              className="h-[420px] w-full"
             />
           </section>
         )}

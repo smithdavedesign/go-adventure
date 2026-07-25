@@ -7,7 +7,11 @@
  * helpers. Nothing here returns draft/in_review/archived rows.
  */
 import { prisma } from "@/shared/config/db";
-import { fetchDestinationPoints, fetchTrailRoutes } from "@/content/geo";
+import {
+  fetchDestinationAreas,
+  fetchDestinationPoints,
+  fetchTrailRoutes,
+} from "@/content/geo";
 import type { DestinationFilters } from "@/content/search/filters";
 import { searchDestinationIds } from "@/content/search/search";
 import { resolveFacts, resolvePermit } from "@/platform/content-revisions/precedence";
@@ -166,8 +170,9 @@ export async function getDestinationBySlug(
   });
   if (!row) return null;
 
-  const [points, routes, permit, facts] = await Promise.all([
+  const [points, areas, routes, permit, facts] = await Promise.all([
     fetchDestinationPoints([row.id]),
+    fetchDestinationAreas([row.id]),
     fetchTrailRoutes(row.trails.map((t) => t.trailId)),
     getDestinationPermit(row.id),
     getDestinationFacts(row.id),
@@ -202,6 +207,7 @@ export async function getDestinationBySlug(
     summary: row.summary,
     tags: row.tags,
     location: points.get(row.id) ?? null,
+    area: areas.get(row.id) ?? null,
     heroAlt: row.heroAsset?.altText ?? null,
     heroImageUrl: row.heroAsset?.originalUrl ?? null,
     heroCredit: row.heroAsset?.creatorCredit ?? null,

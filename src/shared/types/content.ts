@@ -66,6 +66,7 @@ export const MONTHS: readonly Month[] = [
 ];
 
 export type Coordinates = { lat: number; lng: number };
+export type MultiPolygonCoords = [number, number][][][];
 
 /** Summary shape for the Explore grid — one card per destination. */
 export type DestinationCard = {
@@ -124,6 +125,8 @@ export type ResolvedPermit = {
 export type EntranceFee = { costUsd: number; title: string };
 
 export type DestinationDetail = DestinationCard & {
+  /** Optional destination boundary geometry (GeoJSON MultiPolygon coordinates). */
+  area: MultiPolygonCoords | null;
   trails: TrailSummary[];
   /** Current permit requirement, or null when there's no fresh permit info. */
   permit: ResolvedPermit | null;
