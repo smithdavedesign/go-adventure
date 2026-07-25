@@ -10,6 +10,10 @@ export default defineConfig({
     seed: "tsx prisma/seed.ts",
   },
   datasource: {
-    url: process.env["DATABASE_URL"],
+    // Migrations need a DIRECT (session) connection — the transaction-mode pooler
+    // can't run DDL/advisory locks. The runtime app uses DATABASE_URL (which
+    // should be the transaction pooler in production); migrations use DIRECT_URL,
+    // falling back to DATABASE_URL where only one is set (e.g. CI's local DB).
+    url: process.env["DIRECT_URL"] ?? process.env["DATABASE_URL"],
   },
 });
