@@ -37,6 +37,9 @@ export default function RootLayout({
                 <Link href="/explore" className="hover:text-foreground">
                   Explore
                 </Link>
+                <Link href="/browse" className="hover:text-foreground">
+                  Browse
+                </Link>
                 <UserNav />
               </nav>
             </div>
