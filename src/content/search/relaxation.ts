@@ -22,6 +22,7 @@ import {
   resolvePermitIds,
   resolveSearchIds,
 } from "@/content/destinations/queries";
+import { resolveThemeSlugs } from "@/shared/data/themes";
 import type { DestinationFilters } from "./filters";
 import type { DestinationCard } from "@/shared/types/content";
 
@@ -102,12 +103,13 @@ export type ExploreResult = {
 export async function resolveExplore(
   filters: DestinationFilters,
 ): Promise<ExploreResult> {
-  // Keyword (FTS rank) and permit-required are both resolved once and preserved
-  // across relaxations — neither is a relaxable constraint (like activity).
+  // Keyword (FTS rank), permit-required, and browse themes are all resolved once
+  // and preserved across relaxations — none is a relaxable constraint (like activity).
   const [searchIds, permitIds] = await Promise.all([
     resolveSearchIds(filters),
     resolvePermitIds(filters),
   ]);
+  const themeSlugs = resolveThemeSlugs(filters.themes);
 
   // Keyword given but nothing matched it — relaxing facets cannot produce a
   // match, and silently widening would violate the grounding rule.
@@ -123,18 +125,20 @@ export async function resolveExplore(
 
   let current = filters;
   const dropped: RelaxableConstraint[] = [];
-  let count = await countPublishedDestinations(current, searchIds, permitIds);
+  let count = await countPublishedDestinations(current, searchIds, permitIds, themeSlugs);
 
   while (count === 0 && dropped.length < MAX_RELAXATIONS) {
     const step = nextRelaxation(current);
     if (!step) break; // nothing left that we're allowed to relax
     current = step.relaxed;
     dropped.push(step.constraint);
-    count = await countPublishedDestinations(current, searchIds, permitIds);
+    count = await countPublishedDestinations(current, searchIds, permitIds, themeSlugs);
   }
 
   const destinations =
-    count > 0 ? await listPublishedDestinations(current, searchIds, permitIds) : [];
+    count > 0
+      ? await listPublishedDestinations(current, searchIds, permitIds, themeSlugs)
+      : [];
 
   return {
     destinations,

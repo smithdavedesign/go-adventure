@@ -21,6 +21,9 @@ import {
   type Month,
   type TripLength,
 } from "@/shared/types/content";
+import { THEMES, type ThemeKey } from "@/shared/data/themes";
+
+const THEME_KEYS = THEMES.map((t) => t.key);
 
 export type DestinationFilters = {
   activities: Activity[];
@@ -30,6 +33,8 @@ export type DestinationFilters = {
   maxBudgetUsd: number | null;
   /** PRD MVP filter: only destinations that require a permit/reservation. */
   permitRequired: boolean;
+  /** Vibe/category themes (browse pills), matched against the curated theme map. */
+  themes: ThemeKey[];
   q: string | null;
 };
 
@@ -40,6 +45,7 @@ export const EMPTY_FILTERS: DestinationFilters = {
   months: [],
   maxBudgetUsd: null,
   permitRequired: false,
+  themes: [],
   q: null,
 };
 
@@ -49,6 +55,7 @@ const FACETS = {
   difficulty: DIFFICULTIES,
   tripLength: TRIP_LENGTHS,
   month: MONTHS,
+  theme: THEME_KEYS,
 } as const;
 
 type FacetKey = keyof typeof FACETS;
@@ -94,6 +101,7 @@ export function parseFilters(
     months: readFacet(params, "month", FACETS.month),
     maxBudgetUsd: Number.isFinite(maxBudget) && maxBudget > 0 ? maxBudget : null,
     permitRequired: params.get("permit") === "1",
+    themes: readFacet(params, "theme", FACETS.theme),
     q: q ? q.slice(0, 120) : null, // bound length defensively
   };
 }
@@ -125,6 +133,7 @@ export function filtersToSearchParams(
   if (filters.maxBudgetUsd != null)
     params.set("maxBudget", String(filters.maxBudgetUsd));
   if (filters.permitRequired) params.set("permit", "1");
+  for (const v of filters.themes) params.append("theme", v);
   if (filters.q) params.set("q", filters.q);
   return params;
 }
@@ -138,6 +147,7 @@ export function activeFilterCount(filters: DestinationFilters): number {
     filters.months.length +
     (filters.maxBudgetUsd != null ? 1 : 0) +
     (filters.permitRequired ? 1 : 0) +
+    filters.themes.length +
     (filters.q ? 1 : 0)
   );
 }

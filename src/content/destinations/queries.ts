@@ -76,15 +76,18 @@ function toWhere(
   filters: DestinationFilters,
   searchIds: string[] | null,
   permitIds: string[] | null = null,
+  themeSlugs: string[] | null = null,
 ) {
   // Both searchIds (keyword FTS) and permitIds (permit-required) constrain by id;
-  // AND them so a destination must be in every active id set.
+  // AND them so a destination must be in every active id set. themeSlugs (browse
+  // pills) constrains by slug — the theme map is keyed on slug.
   const idClauses: { id: { in: string[] } }[] = [];
   if (searchIds) idClauses.push({ id: { in: searchIds } });
   if (permitIds) idClauses.push({ id: { in: permitIds } });
   return {
     status: "published" as const,
     ...(idClauses.length ? { AND: idClauses } : {}),
+    ...(themeSlugs ? { slug: { in: themeSlugs } } : {}),
     ...(filters.activities.length
       ? { activities: { hasSome: filters.activities } }
       : {}),
@@ -153,22 +156,28 @@ export async function countPublishedDestinations(
   filters: DestinationFilters,
   searchIds: string[] | null = null,
   permitIds: string[] | null = null,
+  themeSlugs: string[] | null = null,
 ): Promise<number> {
   if (searchIds && searchIds.length === 0) return 0;
   if (permitIds && permitIds.length === 0) return 0;
-  return prisma.destination.count({ where: toWhere(filters, searchIds, permitIds) });
+  if (themeSlugs && themeSlugs.length === 0) return 0;
+  return prisma.destination.count({
+    where: toWhere(filters, searchIds, permitIds, themeSlugs),
+  });
 }
 
 export async function listPublishedDestinations(
   filters: DestinationFilters,
   searchIds: string[] | null = null,
   permitIds: string[] | null = null,
+  themeSlugs: string[] | null = null,
 ): Promise<DestinationCard[]> {
   if (searchIds && searchIds.length === 0) return [];
   if (permitIds && permitIds.length === 0) return [];
+  if (themeSlugs && themeSlugs.length === 0) return [];
 
   const rows = await prisma.destination.findMany({
-    where: toWhere(filters, searchIds, permitIds),
+    where: toWhere(filters, searchIds, permitIds, themeSlugs),
     // Keyword results keep FTS rank order (applied below); otherwise A→Z.
     orderBy: searchIds ? undefined : { name: "asc" },
     include: {

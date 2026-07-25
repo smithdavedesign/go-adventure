@@ -7,6 +7,7 @@ import {
   type RelaxableConstraint,
 } from "@/content/search/relaxation";
 import { FilterBar } from "@/content/search/FilterBar";
+import { CategoryPills } from "@/content/search/CategoryPills";
 import {
   RelaxationBanner,
   type DroppedLabel,
@@ -86,6 +87,11 @@ export default async function ExplorePage({
           <ExploreViewToggle />
         </Suspense>
       </div>
+
+      {/* Vibe pills — tap-to-browse by theme (useSearchParams → Suspense). */}
+      <Suspense fallback={<div className="h-9" />}>
+        <CategoryPills />
+      </Suspense>
 
       {/* useSearchParams inside these client components requires a Suspense boundary. */}
       <Suspense fallback={<div className="h-28" />}>

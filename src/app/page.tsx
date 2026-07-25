@@ -2,6 +2,7 @@ import Link from "next/link";
 import { listPublishedDestinations } from "@/content/destinations/queries";
 import { EMPTY_FILTERS } from "@/content/search/filters";
 import { DestinationCard } from "@/content/destinations/DestinationCard";
+import { MONTHS } from "@/shared/types/content";
 
 // ISR (PRD caching model): the home page is editorial and prerenders, then
 // revalidates hourly. The publish workflow also revalidates "/" on-demand
@@ -13,11 +14,26 @@ import { DestinationCard } from "@/content/destinations/DestinationCard";
 export const revalidate = 3600;
 
 export default async function HomePage() {
-  let featured: Awaited<ReturnType<typeof listPublishedDestinations>> = [];
+  // "Best right now": destinations whose best months include the current month
+  // (the ISR revalidation keeps this fresh). Falls back to a general featured set
+  // if too few are in season. Best-effort — a DB hiccup just yields an empty strip.
+  const monthKey = MONTHS[new Date().getMonth()];
+  const monthLabel = monthKey[0].toUpperCase() + monthKey.slice(1);
+
+  let picks: Awaited<ReturnType<typeof listPublishedDestinations>> = [];
+  let seasonal = false;
   try {
-    featured = (await listPublishedDestinations(EMPTY_FILTERS)).slice(0, 3);
+    const inSeason = (
+      await listPublishedDestinations({ ...EMPTY_FILTERS, months: [monthKey] })
+    ).slice(0, 6);
+    if (inSeason.length >= 3) {
+      picks = inSeason;
+      seasonal = true;
+    } else {
+      picks = (await listPublishedDestinations(EMPTY_FILTERS)).slice(0, 6);
+    }
   } catch {
-    featured = [];
+    picks = [];
   }
 
   return (
@@ -47,19 +63,28 @@ export default async function HomePage() {
         </div>
       </section>
 
-      {featured.length > 0 && (
+      {picks.length > 0 && (
         <section className="mx-auto max-w-6xl px-4 pb-20">
-          <div className="mb-6 flex items-baseline justify-between">
-            <h2 className="text-xl font-semibold">Featured destinations</h2>
+          <div className="mb-6 flex items-baseline justify-between gap-4">
+            <div>
+              <h2 className="text-xl font-semibold">
+                {seasonal ? `Best in ${monthLabel}` : "Featured destinations"}
+              </h2>
+              {seasonal && (
+                <p className="mt-1 text-sm text-muted-foreground">
+                  In season right now — great to visit this month.
+                </p>
+              )}
+            </div>
             <Link
-              href="/explore"
-              className="text-sm text-muted-foreground hover:text-foreground"
+              href={seasonal ? `/explore?month=${monthKey}` : "/explore"}
+              className="shrink-0 text-sm text-muted-foreground hover:text-foreground"
             >
               See all →
             </Link>
           </div>
           <div className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {featured.map((d) => (
+            {picks.map((d) => (
               <DestinationCard key={d.id} destination={d} />
             ))}
           </div>
