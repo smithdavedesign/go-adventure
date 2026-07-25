@@ -28,6 +28,8 @@ export type DestinationFilters = {
   tripLengths: TripLength[];
   months: Month[];
   maxBudgetUsd: number | null;
+  /** PRD MVP filter: only destinations that require a permit/reservation. */
+  permitRequired: boolean;
   q: string | null;
 };
 
@@ -37,6 +39,7 @@ export const EMPTY_FILTERS: DestinationFilters = {
   tripLengths: [],
   months: [],
   maxBudgetUsd: null,
+  permitRequired: false,
   q: null,
 };
 
@@ -90,6 +93,7 @@ export function parseFilters(
     tripLengths: readFacet(params, "tripLength", FACETS.tripLength),
     months: readFacet(params, "month", FACETS.month),
     maxBudgetUsd: Number.isFinite(maxBudget) && maxBudget > 0 ? maxBudget : null,
+    permitRequired: params.get("permit") === "1",
     q: q ? q.slice(0, 120) : null, // bound length defensively
   };
 }
@@ -120,6 +124,7 @@ export function filtersToSearchParams(
   for (const v of filters.months) params.append("month", v);
   if (filters.maxBudgetUsd != null)
     params.set("maxBudget", String(filters.maxBudgetUsd));
+  if (filters.permitRequired) params.set("permit", "1");
   if (filters.q) params.set("q", filters.q);
   return params;
 }
@@ -132,6 +137,7 @@ export function activeFilterCount(filters: DestinationFilters): number {
     filters.tripLengths.length +
     filters.months.length +
     (filters.maxBudgetUsd != null ? 1 : 0) +
+    (filters.permitRequired ? 1 : 0) +
     (filters.q ? 1 : 0)
   );
 }

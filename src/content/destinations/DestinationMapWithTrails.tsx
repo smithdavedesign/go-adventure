@@ -25,6 +25,16 @@ function summarizeTrailDifficulty(difficulties: string[]): string | null {
  * Both sections share hover state: mousing over a trail card highlights
  * the corresponding route on the map, making spatial context immediate.
  */
+type TrailSort = "featured" | "longest" | "shortest" | "elevation" | "duration";
+
+const SORTERS: Record<TrailSort, (a: TrailSummary, b: TrailSummary) => number> = {
+  featured: () => 0, // keep incoming order (representative first, editorial order)
+  longest: (a, b) => b.distanceMiles - a.distanceMiles,
+  shortest: (a, b) => a.distanceMiles - b.distanceMiles,
+  elevation: (a, b) => b.elevationGainFt - a.elevationGainFt,
+  duration: (a, b) => b.durationHours - a.durationHours,
+};
+
 export function DestinationMapWithTrails({
   center,
   area,
@@ -37,11 +47,14 @@ export function DestinationMapWithTrails({
   trails: TrailSummary[];
 }) {
   const [hoveredTrailName, setHoveredTrailName] = useState<string | null>(null);
+  const [difficulty, setDifficulty] = useState<string | null>(null);
+  const [sort, setSort] = useState<TrailSort>("featured");
 
   // Memoized so hovering a trail (which re-renders this component) doesn't hand
   // DestinationMap a fresh `routes` array each time — otherwise its init effect
   // would tear down and rebuild the whole map on every hover, flashing the map
   // and defeating the highlight. Keyed on `trails`, which is stable per page.
+  // The map always shows the full set (spatial overview); only the LIST filters.
   const mapRoutes = useMemo(
     () =>
       trails
@@ -54,6 +67,26 @@ export function DestinationMapWithTrails({
     () => summarizeTrailDifficulty(trails.map((t) => t.difficulty)),
     [trails],
   );
+
+  // Difficulties actually present, in canonical order — drives the filter chips.
+  const presentDifficulties = useMemo(
+    () =>
+      DIFFICULTY_ORDER.filter((d) => trails.some((t) => t.difficulty === d)),
+    [trails],
+  );
+
+  const visibleTrails = useMemo(() => {
+    const filtered = difficulty
+      ? trails.filter((t) => t.difficulty === difficulty)
+      : trails;
+    // Copy before sort so the incoming array isn't mutated.
+    return [...filtered].sort(SORTERS[sort]);
+  }, [trails, difficulty, sort]);
+
+  // Sort is useful whenever there are a few trails; difficulty chips only when
+  // the trails actually span more than one difficulty.
+  const showControls = trails.length >= 3;
+  const showDifficultyChips = presentDifficulties.length > 1;
 
   return (
     <>
@@ -75,16 +108,57 @@ export function DestinationMapWithTrails({
       {/* Trail listing */}
       <section className="mt-10">
         <h2 className="mb-4 text-lg font-semibold">
-          Trails ({trails.length})
+          Trails ({difficulty ? `${visibleTrails.length} of ${trails.length}` : trails.length})
           {difficultyRange && (
             <span className="ml-2 font-normal text-muted-foreground">
               · {difficultyRange}
             </span>
           )}
         </h2>
-        {trails.length > 0 ? (
+
+        {/* Trail-level filters (PRD: trail listing with trail-level filters). */}
+        {showControls && (
+          <div className="mb-4 flex flex-wrap items-center gap-3">
+            {showDifficultyChips && (
+              <div
+                className="flex flex-wrap items-center gap-1.5"
+                role="group"
+                aria-label="Filter trails by difficulty"
+              >
+                <FilterChip active={difficulty === null} onClick={() => setDifficulty(null)}>
+                  All
+                </FilterChip>
+                {presentDifficulties.map((d) => (
+                  <FilterChip
+                    key={d}
+                    active={difficulty === d}
+                    onClick={() => setDifficulty(difficulty === d ? null : d)}
+                  >
+                    {formatDifficulty(d)}
+                  </FilterChip>
+                ))}
+              </div>
+            )}
+            <label className="ml-auto flex items-center gap-2 text-sm text-muted-foreground">
+              Sort
+              <select
+                value={sort}
+                onChange={(e) => setSort(e.target.value as TrailSort)}
+                className="rounded-md border border-border bg-background px-2 py-1 text-sm text-foreground focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
+              >
+                <option value="featured">Featured</option>
+                <option value="longest">Longest</option>
+                <option value="shortest">Shortest</option>
+                <option value="elevation">Elevation gain</option>
+                <option value="duration">Duration</option>
+              </select>
+            </label>
+          </div>
+        )}
+
+        {visibleTrails.length > 0 ? (
           <ul className="divide-y divide-border rounded-xl border border-border">
-            {trails.map((t) => (
+            {visibleTrails.map((t) => (
               <li key={t.id}>
                 <Link
                   href={`/trails/${t.slug}`}
@@ -126,5 +200,31 @@ export function DestinationMapWithTrails({
         )}
       </section>
     </>
+  );
+}
+
+function FilterChip({
+  active,
+  onClick,
+  children,
+}: {
+  active: boolean;
+  onClick: () => void;
+  children: React.ReactNode;
+}) {
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      aria-pressed={active}
+      className={
+        "rounded-full border px-3 py-1 text-sm transition-colors focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring " +
+        (active
+          ? "border-brand bg-brand text-brand-foreground"
+          : "border-border text-muted-foreground hover:text-foreground")
+      }
+    >
+      {children}
+    </button>
   );
 }

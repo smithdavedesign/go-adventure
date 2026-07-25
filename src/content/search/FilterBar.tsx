@@ -21,6 +21,7 @@ import {
   parseFilters,
   type DestinationFilters,
 } from "./filters";
+import { SearchAutocomplete } from "./SearchAutocomplete";
 
 const BUDGET_PRESETS = [250, 500, 1000, 2000] as const;
 
@@ -62,35 +63,11 @@ export function FilterBar() {
 
   return (
     <div className="space-y-4">
-      {/* Uncontrolled input: `key` remounts it (resetting the field) when the
-          URL keyword changes, e.g. after "Clear all". Committed on submit so we
-          don't navigate on every keystroke. */}
-      <form
-        onSubmit={(e) => {
-          e.preventDefault();
-          const value = new FormData(e.currentTarget).get("q");
-          const trimmed = (value?.toString() ?? "").trim();
-          commit({ ...filters, q: trimmed ? trimmed : null });
-        }}
-        role="search"
-        className="flex gap-2"
-      >
-        <input
-          key={filters.q ?? ""}
-          name="q"
-          type="search"
-          defaultValue={filters.q ?? ""}
-          placeholder='Try "alpine backpacking" or "waterfalls"'
-          aria-label="Search destinations"
-          className="w-full max-w-md rounded-md border border-input bg-background px-3 py-2 text-sm"
-        />
-        <button
-          type="submit"
-          className="rounded-md bg-brand px-4 py-2 text-sm font-medium text-brand-foreground hover:opacity-90 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-ring"
-        >
-          Search
-        </button>
-      </form>
+      <SearchAutocomplete
+        key={filters.q ?? ""}
+        initialQuery={filters.q ?? ""}
+        onSearch={(q) => commit({ ...filters, q })}
+      />
 
       <div className="flex flex-wrap items-start gap-x-8 gap-y-4">
         <ChipGroup label="Activity">
@@ -170,6 +147,17 @@ export function FilterBar() {
             ))}
           </select>
         </label>
+
+        <ChipGroup label="Permit">
+          <Chip
+            active={filters.permitRequired}
+            onClick={() =>
+              commit({ ...filters, permitRequired: !filters.permitRequired })
+            }
+          >
+            Permit required
+          </Chip>
+        </ChipGroup>
       </div>
 
       {count > 0 && (

@@ -19,6 +19,7 @@
 import {
   countPublishedDestinations,
   listPublishedDestinations,
+  resolvePermitIds,
   resolveSearchIds,
 } from "@/content/destinations/queries";
 import type { DestinationFilters } from "./filters";
@@ -101,7 +102,12 @@ export type ExploreResult = {
 export async function resolveExplore(
   filters: DestinationFilters,
 ): Promise<ExploreResult> {
-  const searchIds = await resolveSearchIds(filters);
+  // Keyword (FTS rank) and permit-required are both resolved once and preserved
+  // across relaxations — neither is a relaxable constraint (like activity).
+  const [searchIds, permitIds] = await Promise.all([
+    resolveSearchIds(filters),
+    resolvePermitIds(filters),
+  ]);
 
   // Keyword given but nothing matched it — relaxing facets cannot produce a
   // match, and silently widening would violate the grounding rule.
@@ -117,18 +123,18 @@ export async function resolveExplore(
 
   let current = filters;
   const dropped: RelaxableConstraint[] = [];
-  let count = await countPublishedDestinations(current, searchIds);
+  let count = await countPublishedDestinations(current, searchIds, permitIds);
 
   while (count === 0 && dropped.length < MAX_RELAXATIONS) {
     const step = nextRelaxation(current);
     if (!step) break; // nothing left that we're allowed to relax
     current = step.relaxed;
     dropped.push(step.constraint);
-    count = await countPublishedDestinations(current, searchIds);
+    count = await countPublishedDestinations(current, searchIds, permitIds);
   }
 
   const destinations =
-    count > 0 ? await listPublishedDestinations(current, searchIds) : [];
+    count > 0 ? await listPublishedDestinations(current, searchIds, permitIds) : [];
 
   return {
     destinations,

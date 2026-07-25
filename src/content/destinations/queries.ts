@@ -72,10 +72,19 @@ async function getDestinationFacts(
  * `searchIds` (when the query has a keyword `q`) constrains and orders by the
  * FTS match; passing an empty list means "keyword matched nothing".
  */
-function toWhere(filters: DestinationFilters, searchIds: string[] | null) {
+function toWhere(
+  filters: DestinationFilters,
+  searchIds: string[] | null,
+  permitIds: string[] | null = null,
+) {
+  // Both searchIds (keyword FTS) and permitIds (permit-required) constrain by id;
+  // AND them so a destination must be in every active id set.
+  const idClauses: { id: { in: string[] } }[] = [];
+  if (searchIds) idClauses.push({ id: { in: searchIds } });
+  if (permitIds) idClauses.push({ id: { in: permitIds } });
   return {
     status: "published" as const,
-    ...(searchIds ? { id: { in: searchIds } } : {}),
+    ...(idClauses.length ? { AND: idClauses } : {}),
     ...(filters.activities.length
       ? { activities: { hasSome: filters.activities } }
       : {}),
@@ -102,22 +111,64 @@ export async function resolveSearchIds(
   return filters.q ? searchDestinationIds(filters.q) : null;
 }
 
+/** Name-matching published destinations for the search autocomplete. Substring,
+ *  case-insensitive — adequate for the launch corpus; the full search adds typo
+ *  tolerance. */
+export async function suggestDestinations(
+  q: string,
+  limit = 6,
+): Promise<{ name: string; slug: string }[]> {
+  const term = q.trim();
+  if (term.length < 2) return [];
+  return prisma.destination.findMany({
+    where: {
+      status: "published",
+      name: { contains: term, mode: "insensitive" },
+    },
+    select: { name: true, slug: true },
+    orderBy: { name: "asc" },
+    take: limit,
+  });
+}
+
+/** Published-destination ids that currently require a permit/reservation. `null`
+ *  when the permit filter is off (so it doesn't constrain the query). */
+export async function resolvePermitIds(
+  filters: DestinationFilters,
+): Promise<string[] | null> {
+  if (!filters.permitRequired) return null;
+  const rows = await prisma.permitRequirement.findMany({
+    where: {
+      subjectType: "destination",
+      requirementType: { in: ["reservation", "quota", "timed_entry"] },
+      OR: [{ expiresAt: null }, { expiresAt: { gt: new Date() } }],
+    },
+    select: { subjectId: true },
+    distinct: ["subjectId"],
+  });
+  return rows.map((r) => r.subjectId);
+}
+
 export async function countPublishedDestinations(
   filters: DestinationFilters,
   searchIds: string[] | null = null,
+  permitIds: string[] | null = null,
 ): Promise<number> {
   if (searchIds && searchIds.length === 0) return 0;
-  return prisma.destination.count({ where: toWhere(filters, searchIds) });
+  if (permitIds && permitIds.length === 0) return 0;
+  return prisma.destination.count({ where: toWhere(filters, searchIds, permitIds) });
 }
 
 export async function listPublishedDestinations(
   filters: DestinationFilters,
   searchIds: string[] | null = null,
+  permitIds: string[] | null = null,
 ): Promise<DestinationCard[]> {
   if (searchIds && searchIds.length === 0) return [];
+  if (permitIds && permitIds.length === 0) return [];
 
   const rows = await prisma.destination.findMany({
-    where: toWhere(filters, searchIds),
+    where: toWhere(filters, searchIds, permitIds),
     // Keyword results keep FTS rank order (applied below); otherwise A→Z.
     orderBy: searchIds ? undefined : { name: "asc" },
     include: {
