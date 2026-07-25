@@ -62,3 +62,6 @@ next-env.d.ts
 .windsurf/
 .claude/skills/
 skills-lock.json
+
+# MapLibre worker chunks copied from node_modules by postinstall
+/public/maplibre/

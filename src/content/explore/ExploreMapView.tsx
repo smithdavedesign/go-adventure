@@ -9,6 +9,7 @@ import {
   Popup,
 } from "maplibre-gl";
 import "maplibre-gl/dist/maplibre-gl.css";
+import "@/shared/maplibre"; // self-hosted worker URL (must run before map creation)
 import type { DestinationCard } from "@/shared/types/content";
 import { formatBudget, formatDifficulty } from "@/shared/utils/format";
 

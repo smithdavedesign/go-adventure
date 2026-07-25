@@ -22,7 +22,7 @@
     "set-admin": "tsx scripts/set-admin.ts",
     "alerts:refresh": "tsx src/platform/alerts/runner.ts",
     "ingest:trails": "tsx src/platform/ingestion/osm/runner.ts",
-    "postinstall": "prisma generate"
+    "postinstall": "prisma generate && node scripts/copy-maplibre-worker.mjs"
   },
   "dependencies": {
     "@auth/prisma-adapter": "^2.11.3",
