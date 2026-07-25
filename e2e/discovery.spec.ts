@@ -63,7 +63,7 @@ test.describe("discovery walking skeleton", () => {
     page,
   }) => {
     await page.goto("/explore");
-    await page.getByRole("searchbox", { name: /search destinations/i }).fill("zionn");
+    await page.getByRole("combobox", { name: /search destinations/i }).fill("zionn");
     await page.getByRole("button", { name: "Search" }).click();
 
     await expect(page).toHaveURL(/q=zionn/);

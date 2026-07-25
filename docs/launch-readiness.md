@@ -15,7 +15,7 @@ The **platform is built and works end-to-end** — discovery, search, the bindin
 ### 1. Content quality — 🟡 owner: Editorial lead
 Every published destination/trail must pass rubric, source, attribution, rights, and freshness checks; corpus scope disclosed.
 - 🟢 The machinery exists: rubric-gated publish (a draft can't publish until difficulty/budget/trip-length/activities/geometry are present), provenance backbone, `noindex` for anything unpublished.
-- 🟢 A real corpus is live: **28 iconic national parks** published, each with an NPS-sourced summary, entrance fee, and live alerts, plus representative OpenStreetMap trails (**28/28**), Open-Meteo forecasts + elevation, open-licensed Wikimedia hero photos (**28/28**), highlights, and nearby airports. Every source is attributed and dynamic data is freshness-gated.
+- 🟢 A real corpus is live: **28 iconic national parks** published, each with an NPS-sourced summary, entrance fee, and live alerts, plus representative OpenStreetMap trails (**28/28**), Open-Meteo forecasts + elevation, an open-licensed Wikimedia hero + a **6-photo gallery** (**28/28**, ~168 photos), highlights, and nearby airports. Every source is attributed and dynamic data is freshness-gated.
 - 🟡 **Remaining (human):** an editorial pass per rubric to sign off the researched facets (difficulty / best-months / budget are editorial judgements), a decision on the final launch-set size/regions, and the corpus-scope disclosure. The platform *and* a real corpus now exist — what's owed is editorial sign-off, not ingestion. Downgraded from 🔴 now that content is no longer fabricated seed data.
 
 ### 2. Source / legal — 🟡 owner: Product + legal reviewer

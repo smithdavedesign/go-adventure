@@ -112,7 +112,7 @@ export function SearchAutocomplete({
             type="search"
             role="combobox"
             aria-expanded={listVisible}
-            aria-controls="destination-suggestions"
+            aria-controls={listVisible ? "destination-suggestions" : undefined}
             aria-autocomplete="list"
             aria-activedescendant={active >= 0 ? `suggestion-${active}` : undefined}
             aria-label="Search destinations"

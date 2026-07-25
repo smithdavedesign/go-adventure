@@ -44,6 +44,7 @@ Written for a solo build (one person + Claude Code) — milestones are sequenced
 - **`postinstall: prisma generate` added.** The generated client is gitignored, so CI and fresh clones regenerate it on install; without this, typecheck/build fail with no client.
 - **Search is inline FTS + `word_similarity`, no stored tsvector/index.** Correct and fast for a 25–50 row corpus; a stored/indexed FTS column (or Meilisearch) is gated on measured need per [ADR-0004](adr/0004-search-graduation-criteria.md). `word_similarity` (not `similarity`) is what makes typos like "zionn" → "Zion Narrows Basecamp" match.
 - **Map tiles use MapTiler in production configuration, with a keyless demo fallback for local-only development.** MapLibre remains the renderer and degrades gracefully so maps never block content reading.
+- **Binding-slice discovery features completed.** A PRD cross-check found M2/M3 shipped the core grid + search but not every binding Phase-1 discovery element. Now closed: **trail-level filters** (sort + difficulty on the destination trail listing), a **Permit Required** facet on Explore, **search autocomplete** (`/api/suggest` + an ARIA combobox), **browse by region / mountain range** (`/browse`, editorial taxonomy in `src/shared/data/regions.ts`), a **photo gallery** per park (Launch Set "Photos"), and **side-by-side comparison** (`/compare?d=…`, up to 4). All verified against the production build.
 
 ### M4–M5 notes
 
