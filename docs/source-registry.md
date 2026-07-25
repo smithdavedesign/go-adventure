@@ -49,7 +49,7 @@ render site in the product. Removing a source means removing its render site too
 | Endpoints | Overpass `POST /api/interpreter` — named hiking `way`s around each park point. Mirror rotation across 3 endpoints, backoff on 429/504. |
 | External ID | OSM `way` id → `Trail.slug` = `${slugify(name)}-${parkCode}` |
 | Auth | None (keyless). Requires a descriptive `User-Agent`. |
-| Rate limit | Shared public Overpass — strict. We use small radii, `out geom 80`, 4 s between parks, mirror rotation, capped retries. Coverage reached incrementally (25/28 parks, 138 trails). |
+| Rate limit | Shared public Overpass — strict. We use small radii, `out geom 80`, 4 s between parks, mirror rotation, capped retries. Coverage reached incrementally to **28/28 parks** (140+ trails). Badlands, whose NPS centroid sits ~43 km from its developed trail cluster, was ingested from a trailhead-area coordinate rather than the centroid. |
 | Commercial use | Permitted under ODbL. |
 | Licence + attribution | **ODbL.** Credit rendered: **"© OpenStreetMap contributors"** (via the map's attribution control; the same credit covers the OSM-derived trail geometry drawn over the basemap). |
 | Collection scope | Trail name, geometry (LineString), `sac_scale` difficulty where tagged. Dropped: closed/`access=no` ways, unnamed ways, segments < 0.3 mi. Curated to ≤ 5 representative named trails/park. |
@@ -93,7 +93,7 @@ for cumulative-gain estimates. USGS is not wired.*
 | External ID | Commons file name → `MediaAsset.objectKey` = `wikimedia/${fileName}` |
 | Auth | None (keyless) |
 | Rate limit | Light; one hero per park |
-| Commercial use | Permitted **only** for CC/PD licences. `isAcceptableLicence` rejects fair-use/non-free — those parks keep the gradient fallback (Glacier: 27/28 have open heroes). |
+| Commercial use | Permitted **only** for CC/PD licences. `isAcceptableLicence` rejects fair-use/non-free; a park whose Wikipedia lead image isn't openly licensed keeps the gradient fallback or gets a hand-picked, licence-verified Commons file (`HERO_OVERRIDE`, e.g. Glacier → a CC BY-SA Lake McDonald photo). **28/28 have open-licensed heroes.** |
 | Licence + attribution | Per-image CC/PD. Credit rendered: **`${creator} · ${licence} · Wikimedia Commons`** as a caption overlay on the hero. `rightsStatus: verified` only when the licence passes the gate. |
 | Collection scope | One landscape hero per destination (external URL now; R2 self-hosting deferred). EXIF-stripped marker set. |
 | Refresh cadence | On demand (`npm run enrich:media`); idempotent. |

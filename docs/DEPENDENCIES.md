@@ -25,7 +25,8 @@ Nothing. We're running entirely on local Docker Postgres+PostGIS (`docker-compos
 - **Google OAuth credentials** — in Google Cloud Console (`console.cloud.google.com`): create a project (or reuse one), configure the OAuth consent screen, then create an **OAuth 2.0 Client ID** of type "Web application."
   - Authorized redirect URI (Auth.js's default callback path): `http://localhost:3000/api/auth/callback/google` for local dev, plus the production URL equivalent once deployed.
   - Produces `AUTH_GOOGLE_ID` and `AUTH_GOOGLE_SECRET` for `.env`. `AUTH_SECRET` is separate — generate a random value yourself (e.g. `openssl rand -base64 32`), not something Google gives you.
-  - Session strategy (DB vs JWT) is still an open decision — [ADR-0002](adr/0002-authjs-session-strategy.md).
+  - Session strategy is database sessions ([ADR-0002](adr/0002-authjs-session-strategy.md), accepted).
+- **Admin access** — `/admin` is gated by a Google account with `isAdmin = true` (no password). After you sign in once (so the user row exists), grant yourself the role: `npm run set-admin -- <your-email>` (add `--revoke` to remove). This is the only step needed to unlock admin in production.
 
 ## Before M8 — AI-assisted drafting
 

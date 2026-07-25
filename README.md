@@ -2,7 +2,7 @@
 
 > The "Skyscanner Explore" experience for outdoor adventure. Users come to discover *where* to go, not just to research a place they've already chosen.
 
-**Status:** The Phase 1 platform is built end-to-end (engineering milestones M0–M11). Discovery + search with the binding zero-result relaxation, a provenance-backed content model, ingestion + editorial publishing, Google auth + saved destinations, AI-assisted drafting, and expiring forecast/alert snapshots are live — 80 unit tests + 12 E2E green. The current source mix is 5 live sources (3 keyless, 2 keyed). What's left is real content completion, legal sign-off, and operational ownership — see [docs/launch-readiness.md](docs/launch-readiness.md). See [Status](#status) below.
+**Status:** The Phase 1 platform is built end-to-end (engineering milestones M0–M11), and a **real 28-park corpus is live** — sourced facts/fees/alerts, representative OSM trails (28/28), Open-Meteo forecasts, and open-licensed Wikimedia hero photos (28/28), all attributed and freshness-gated. Discovery + search with the binding zero-result relaxation, a provenance-backed content model, ingestion + editorial publishing, Google auth + saved destinations, admin gated on `isAdmin`, AI-assisted drafting, and ISR for published pages are live — 105 unit tests + 16 E2E (incl. axe accessibility) green, across 5 live sources (3 keyless, 2 keyed). What's left is editorial rubric sign-off, legal sign-off, and operational ownership — see [docs/launch-readiness.md](docs/launch-readiness.md). See [Status](#status) below.
 
 The name "Travel Roamer" is a candidate pending domain and trademark clearance (see the PRD's Product Name section) — it's used here as the working name, not a final decision.
 
@@ -23,7 +23,7 @@ An adventure discovery platform for outdoor travelers (backpackers, hikers, clim
 - **Home** → **Explore** (destination card grid, five facet filters, typo-tolerant keyword search) → **Destination** (hero, facts, MapLibre map, trail list, safety disclosure) → **Trail**.
 - **Zero-result relaxation**: an impossible filter combination relaxes the strictest constraint (budget → month → trip length → difficulty, never activity) with a transparent banner and removable chips, instead of a dead-end "no results" — a binding PRD behavior, covered by a Playwright test.
 
-Also built (visit after seeding): **`/admin`** (editorial tooling — data-health dashboard, review queue, draft editor, publish; interim password gate, default `admin`), **`/explore`** search + relaxation, and per-destination permit info, maps, and weather.
+Also built (visit after seeding): **`/admin`** (editorial tooling — data-health dashboard, review queue, draft editor, publish; gated by a Google account with `isAdmin`, granted via `npm run set-admin -- <email>`), **`/explore`** search + relaxation, and per-destination permit info, maps, and weather.
 
 The launch corpus is now real, not seed data: **28 iconic national parks are published live** — each with an NPS-sourced summary, entrance fee, and live park alerts, plus representative OpenStreetMap trails, Open-Meteo forecasts, and (for most) an open-licensed Wikimedia hero photo. Every source is attributed and dynamic data is freshness-gated. What remains is editorial completion to the full launch set plus human/legal sign-off ([launch-readiness](docs/launch-readiness.md)) — not more platform code.
 

@@ -551,8 +551,15 @@ Bounded domains within the monorepo. Explicit import rules prevent coupling and 
 **Import rules:**
 - `/content` reads published records only. Never imports from `/user`, `/platform`, or `/admin`.
 - `/platform` owns all write paths. Never imports from `/user`.
-- `/admin` may import from `/content` and `/platform`. Routes gated by the admin session (interim password gate; Auth.js `is_admin` plumbing ready — see ROADMAP M6/M7).
+- `/admin` may import from `/content` and `/platform`. Routes gated by an authenticated Auth.js session with the `isAdmin` role (the interim password gate is retired); each admin server action re-checks the role, not just the page render.
 - `/user` may reference content IDs but never mutates editorial records.
+
+**Rendering & caching (as-built, per ADR-0001):**
+- **Home** — static + ISR (`revalidate = 3600`); the publish workflow also revalidates `/` on-demand via the outbox → `revalidatePath`.
+- **Trail pages** — on-demand ISR: generated on first request, then cached and revalidated hourly. Not prerendered at build (100+ trails against the Supabase pooler would exhaust its client limit; on-demand spreads that across traffic).
+- **Destination pages** — deliberately `force-dynamic`: they read per-user save state (`auth()`) and safety-critical live alerts that must never be served stale, and reading `auth()` forces dynamic regardless.
+- **Explore** — `force-dynamic` (results depend on the query string).
+- **Root layout is static** — the header reads session on the client (`Providers` + `UserNav` via Auth.js `useSession`) rather than calling `auth()` in the layout, which would otherwise force every page (including the ISR pages) to render dynamically.
 
 ---
 

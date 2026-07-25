@@ -8,14 +8,15 @@ This is the M11 deliverable: not "launch approved," but "here is exactly what st
 
 ## The one-line summary
 
-The **platform is built and works end-to-end** — discovery, search, the binding zero-result relaxation, the provenance-backed content model, ingestion, editorial publishing, auth, saves, AI-assisted drafting, and expiring dynamic data. What remains is not more application code: it's **real content, external service accounts, and human/legal sign-off**. The single biggest blocker is the curated 25–50-destination corpus, which by PRD design is human editorial work.
+The **platform is built and works end-to-end** — discovery, search, the binding zero-result relaxation, the provenance-backed content model, ingestion, editorial publishing, auth, saves, AI-assisted drafting, and expiring dynamic data — and a **real 28-park corpus is now live** (sourced facts, representative trails, forecasts, licensed photos, all attributed and freshness-gated). What remains is not more application code: it's **editorial sign-off on the corpus, external service accounts, and human/legal sign-off**. The biggest remaining item is a human editorial pass per rubric and deciding the final launch set — human work by PRD design.
 
 ## Gate-by-gate
 
-### 1. Content quality — 🔴 owner: Editorial lead
+### 1. Content quality — 🟡 owner: Editorial lead
 Every published destination/trail must pass rubric, source, attribution, rights, and freshness checks; corpus scope disclosed.
 - 🟢 The machinery exists: rubric-gated publish (a draft can't publish until difficulty/budget/trip-length/activities/geometry are present), provenance backbone, `noindex` for anything unpublished.
-- 🔴 **Blocking:** the actual 25–50 destinations don't exist yet. Producing them is human editorial judgment per rubric against real sources — the work the PRD explicitly reserves for people. This is the critical-path launch blocker.
+- 🟢 A real corpus is live: **28 iconic national parks** published, each with an NPS-sourced summary, entrance fee, and live alerts, plus representative OpenStreetMap trails (**28/28**), Open-Meteo forecasts + elevation, open-licensed Wikimedia hero photos (**28/28**), highlights, and nearby airports. Every source is attributed and dynamic data is freshness-gated.
+- 🟡 **Remaining (human):** an editorial pass per rubric to sign off the researched facets (difficulty / best-months / budget are editorial judgements), a decision on the final launch-set size/regions, and the corpus-scope disclosure. The platform *and* a real corpus now exist — what's owed is editorial sign-off, not ingestion. Downgraded from 🔴 now that content is no longer fabricated seed data.
 
 ### 2. Source / legal — 🟡 owner: Product + legal reviewer
 Source registry complete; commercial terms, OSM compliance, media rights, notices reviewed.
@@ -34,13 +35,14 @@ Ingestion, retries/DLQ, outbox, reconciliation, data-health dashboard, manual re
 
 ### 5. Security / privacy — 🟡 owner: Security/privacy owner
 Threat model, roles/RLS, OAuth, secret handling, analytics consent, privacy/terms, deletion/export, backup restore.
-- 🟢 Secure headers/CSP, rate limiting, allow-list validation, parameterised SQL, Auth.js DB sessions, account export (no secrets) + deletion, consent-gated event dictionary that never emits PII. See [security.md](security.md).
-- 🔴 **Blocking:** Postgres RLS + least-privilege roles (Supabase), managed secrets + rotation, threat-model review, privacy policy / terms / cookie notice, backup + tested restore ([ADR-0009](adr/0009-backups-rpo-rto.md)), live Google OAuth credentials.
+- 🟢 Secure headers/CSP, rate limiting, allow-list validation, parameterised SQL, Auth.js DB sessions, account export (no secrets) + deletion, consent-gated event dictionary that never emits PII. **Admin is now gated by an authenticated Google account with `isAdmin`** — the interim password gate is retired, and each admin server action re-checks the role (not just the page render, closing the direct-POST gap). Grant the role with `npm run set-admin -- <email>`. See [security.md](security.md).
+- 🟡 **RLS drafted:** least-privilege roles (web / ingest / read-only), a published-only read policy, and fail-closed user-isolation policies are written in [`prisma/rls-policies.sql`](../prisma/rls-policies.sql). Applying them (with DB-owner creds + per-context connection strings) is a review/apply step, not more code.
+- 🔴 **Blocking:** apply the RLS/roles, managed secrets + rotation, threat-model review, privacy policy / terms / cookie notice, backup + tested restore ([ADR-0009](adr/0009-backups-rpo-rto.md)), production Google OAuth callback + first admin promotion.
 
-### 6. Reliability — 🔴 owner: Engineering lead
+### 6. Reliability — 🟡 owner: Engineering lead
 Performance SLO smoke test, error monitoring, uptime checks, source-freshness alerts, incident drills.
-- 🟢 Single error-reporting entry point wired; forecast freshness gating; CI runs unit + full E2E against a real DB.
-- 🔴 **Blocking:** Sentry + uptime + source-freshness monitoring accounts and alert runbooks; a production RUM performance measurement (the PRD SLOs are RUM-based, not build-time); incident drills. Static generation / ISR for published pages is also deferred (pages are `force-dynamic` now — see roadmap M0/M2 notes).
+- 🟢 Single error-reporting entry point wired; forecast + alert freshness gating; CI runs unit + full E2E against a real DB, plus **automated accessibility checks (axe-core, zero serious/critical violations on home/explore/destination/trail)** and a **Lighthouse CI** job (perf/a11y/SEO/best-practices, reports uploaded). **ISR is now wired** for published pages: the home page is static+ISR and trail pages are on-demand ISR (cached + hourly revalidate), reducing per-request DB load; the destination page stays dynamic by design (per-user save state + never-stale safety alerts).
+- 🔴 **Blocking:** Sentry + uptime + source-freshness monitoring accounts and alert runbooks; a production RUM performance measurement (the PRD SLOs are RUM-based, not lab Lighthouse); incident drills.
 
 ### 7. Product validation — 🔴 owner: Product lead
 Usability sessions show target users understand *why* a result fits and can reach official planning info.
@@ -49,7 +51,7 @@ Usability sessions show target users understand *why* a result fits and can reac
 
 ### 8. SEO — 🟢/🟡 (green-leaning) owner: Growth/content lead
 Only approved canonical pages index; metadata, sitemaps, structured data, noindex rules validated.
-- 🟢 `robots.ts` (disallows admin/api/account/saved/signin), `sitemap.ts` (published canonical pages only — drafts have no URL), per-route `noindex` on non-content pages, JSON-LD with only real on-page facts, locale-aware `<title>` templates, and Open Graph images sourced from cleared hero media when present.
+- 🟢 `robots.ts` (disallows admin/api/account/saved/signin), `sitemap.ts` (published canonical pages only — drafts have no URL), per-route `noindex` on non-content pages, JSON-LD with only real on-page facts, locale-aware `<title>` templates, Open Graph images from cleared hero media, and **ISR-served static HTML for the home + trail pages** (crawler-friendly, fast) with real photos on the 28 live parks.
 - 🟡 **Remaining:** Search Console verification, `hreflang` once `es` ships, and SEO validation over the final human-curated launch corpus.
 
 ## What's needed from you
@@ -84,14 +86,13 @@ Nothing here is blocked on more application code — the platform is built and w
 - **B4. Cost budget** for paid services ([ADR-0010](adr/0010-commercial-service-cost-controls.md)) — a costed operating plan is a PRD gate before beta.
 - **B5. RPO/RTO target** for backups ([ADR-0009](adr/0009-backups-rpo-rto.md)).
 
-### C. Content — the long pole (your editorial judgment)
+### C. Content — editorial sign-off (your judgment)
 
-This is the single biggest blocker and is human by PRD design. The tooling is built; the judgment is yours.
+The corpus now exists: **28 national parks are published** with sourced facts, representative trails, forecasts, and open-licensed photos. What remains is human, per PRD design.
 
-1. With A4/A5 in place, run ingestion (`npm run ingest:nps -- <parkCodes>`) to land drafts in `/admin` review queue.
-2. For each destination, **fill the editorial facets per the PRD rubrics** — difficulty, best months, budget (with assumptions), trip length, one primary label — and **verify the permit type + official link**. These are exactly the fields the publish gate requires; AI can suggest a summary but never these facts.
-3. Publish. Repeat to ~25–50 destinations, disclosing corpus scope.
-> I can drive the mechanics (ingest specific parks, run AI summary suggestions, walk you through the admin flow), but the rubric judgments and source verification are yours to sign off — that's the content-quality gate.
+1. Review the 28 live destinations in `/admin` and confirm the editorial facets per rubric — difficulty, best months, budget (with assumptions), trip length, label — and that each permit type + official link is correct. These are the researched editorial judgements the publish gate can't verify for you.
+2. Decide the final launch set (size + regions) and disclose corpus scope. Add or retire destinations with the ingestion + enrichment scripts (`ingest:nps`, `ingest:trails`, `enrich:fees|media|highlights`, `alerts:refresh`).
+> I drive the mechanics (ingest parks, run trail/photo/fee enrichment, AI summary suggestions, admin flow); the rubric sign-off and source verification are yours — that's the content-quality gate.
 
 ### D. Legal & policy deliverables (you / legal)
 
@@ -104,7 +105,7 @@ This is the single biggest blocker and is human by PRD design. The tooling is bu
 
 - **E1.** Stand up **uptime + source-freshness monitoring** with an owner + runbook per alert (a dashboard without an escalation path isn't monitoring).
 - **E2.** Configure **off-platform backups + run a restore drill**; record RPO/RTO (B5).
-- **E3.** Apply **Postgres RLS + least-privilege roles** in Supabase (public read / user mutation / ingestion / moderation / deploy). *I can write the SQL policies; you apply them with DB-owner creds.*
+- **E3.** Apply **Postgres RLS + least-privilege roles** in Supabase. **SQL is drafted** at [`prisma/rls-policies.sql`](../prisma/rls-policies.sql) — least-privilege roles by context (web / ingest / read-only), a published-only read policy, and fail-closed user-isolation policies. Review it, then apply with DB-owner creds and split connection strings by context.
 - **E4.** **Usability sessions** against real content — validates the "why this fits" experience (a PRD gate).
 
 ### Suggested order
@@ -113,8 +114,7 @@ This is the single biggest blocker and is human by PRD design. The tooling is bu
 
 ### What I (Claude Code) can do next while you start on the above
 
-- Wire **ISR/static generation** for published pages (retire the `force-dynamic` shortcut) — needs A1 or a CI DB.
-- Fold **admin auth into Auth.js `is_admin`**, retiring the interim password gate — needs A6 to fully test, but buildable now.
-- Continue the **trail/media enrichment loop** (remaining parks + spot checks) and optionally add USGS as a secondary elevation source if Open-Meteo limits become a bottleneck.
-- Draft the **ADR-0005 tile-provider comparison** and the **RLS SQL policies** for E3.
-- Add **axe accessibility automation + Lighthouse CI** to the pipeline.
+Delivered since this doc was first written: **ISR** for home + trail pages (`force-dynamic` retired there), **admin auth on Auth.js `isAdmin`** (password gate retired, actions role-guarded), **trail/media enrichment completed to 28/28**, the **RLS SQL draft** (E3), and **axe + Lighthouse CI**. Still buildable next:
+- Move the **destination page** onto ISR too, by relocating its per-user save state and safety alerts to client-fetched holes (deliberately deferred — keeps alerts never-stale).
+- Apply the **RLS policies** together (you run them with DB-owner creds).
+- Wire **`hreflang` + `es` locale** and Search Console once A10 lands.

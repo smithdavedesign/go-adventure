@@ -12,6 +12,8 @@ Status of the PRD Security and Analytics/Monitoring requirements as of M10. Code
 | Rate limiting | [`rateLimit.ts`](../src/platform/security/rateLimit.ts) | Fixed-window limiter (in-memory). Applied to `/api/dev-login`; the pattern extends to production auth/save mutations. |
 | CSRF posture | Server Actions + `SameSite=Lax` cookies | Next.js Server Actions are origin-checked; session/admin cookies are httpOnly + SameSite=Lax. |
 | Auth session handling | Auth.js DB sessions ([ADR-0002](adr/0002-authjs-session-strategy.md)) | Revocable; account deletion cascade-invalidates sessions. Secrets never sent to the browser. |
+| Admin authorization | `admin/(protected)/layout.tsx` + `admin/actions.ts` | Gated by an authenticated Google account with `isAdmin` (interim password gate retired). Each admin server action re-checks the role (`requireAdmin()`), closing the direct-POST-to-action gap. Grant via `npm run set-admin -- <email>`. |
+| Accessibility checks | [`e2e/a11y.spec.ts`](../e2e/a11y.spec.ts) (axe-core) + Lighthouse CI | Zero serious/critical WCAG 2 A/AA violations on home/explore/destination/trail, enforced in CI; Lighthouse job reports perf/a11y/SEO/best-practices. |
 | Data governance | `user/profiles/account.ts` | Account export (no secrets) + deletion (cascade) before user accounts launch. |
 | Analytics event dictionary | [`events.ts`](../src/platform/analytics/events.ts) + [`track.ts`](../src/platform/analytics/track.ts) | Every launch event declared with consent category + allow-listed props. `track()` drops analytics events without consent and strips any non-allow-listed property — no email/location/tokens/free-text ever leave the app. |
 | Single error-reporting entry point | [`report.ts`](../src/platform/observability/report.ts) | Structured error logs for log-based alerting; Sentry sink is the one place to wire alerting. |
@@ -20,7 +22,7 @@ Status of the PRD Security and Analytics/Monitoring requirements as of M10. Code
 
 These are launch-gate items ([PRD Launch Gates](Adventure_Discovery_PRD_v1.1.md#launch-gates) → Security/privacy, Reliability) that code alone can't satisfy:
 
-- **Row-level security + least-privilege DB roles.** Needs real Postgres roles (Supabase) for public reads, user mutations, ingestion, moderation, deployment. The *service boundaries* are already enforced structurally (content code never imports user code); RLS is the DB-level enforcement to add at provisioning.
+- **Row-level security + least-privilege DB roles — SQL drafted, apply pending.** [`prisma/rls-policies.sql`](../prisma/rls-policies.sql) defines least-privilege roles by context (web / ingest / read-only), a published-only read policy, and fail-closed user-isolation policies, with wiring notes (per-context connection strings; a per-transaction `app.user_id` for user isolation). Apply with DB-owner creds. The *service boundaries* are already enforced structurally (content code never imports user code); this is the DB-level enforcement layered under app-level authz.
 - **Secret management + rotation + CI secret/dependency scanning.** `npm audit` runs non-blocking in CI today (ADR-0001); add secret scanning and a managed secret store at deploy.
 - **Sentry / uptime monitoring / source-freshness alerts.** Accounts + DSNs required; `report.ts` is the wired call site. Alerts need owners + runbooks (a dashboard without an escalation path is not monitoring — PRD).
 - **Backups + tested restore + RPO/RTO.** [ADR-0009](adr/0009-backups-rpo-rto.md) — a quarterly restore drill is a human process, not code.
@@ -30,4 +32,4 @@ These are launch-gate items ([PRD Launch Gates](Adventure_Discovery_PRD_v1.1.md#
 
 ## Notes
 
-- CSP currently uses `'unsafe-inline'` for scripts/styles. A nonce-based strict CSP (via middleware) is a hardening follow-up; the connect/img allow-list already scopes external hosts (MapLibre demo tiles, Open-Meteo, Google) and must be tightened to the production tile provider once [ADR-0005](adr/0005-map-tile-provider.md) is decided.
+- CSP currently uses `'unsafe-inline'` for scripts/styles. A nonce-based strict CSP (via middleware) is a hardening follow-up. The connect/img allow-list scopes external hosts to the decided providers — MapTiler ([ADR-0005](adr/0005-map-tile-provider.md), accepted), Open-Meteo, Google, and `upload.wikimedia.org` for hero photos — plus the MapLibre demo tiles used only in local dev.
