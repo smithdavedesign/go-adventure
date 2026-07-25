@@ -19,6 +19,7 @@
     "enrich:fees": "tsx scripts/enrich-nps-fees.ts",
     "enrich:media": "tsx scripts/enrich-media-wikimedia.ts",
     "enrich:highlights": "tsx scripts/enrich-highlights.ts",
+    "set-admin": "tsx scripts/set-admin.ts",
     "alerts:refresh": "tsx src/platform/alerts/runner.ts",
     "ingest:trails": "tsx src/platform/ingestion/osm/runner.ts",
     "postinstall": "prisma generate"
@@ -44,6 +45,8 @@
     "zod": "^4.4.3"
   },
   "devDependencies": {
+    "@axe-core/playwright": "^4.12.1",
+    "@lhci/cli": "^0.15.1",
     "@playwright/test": "^1.61.1",
     "@tailwindcss/postcss": "^4",
     "@testing-library/jest-dom": "^7.0.0",

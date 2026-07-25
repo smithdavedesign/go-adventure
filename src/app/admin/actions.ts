@@ -1,15 +1,9 @@
 "use server";
 
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
 import { prisma } from "@/shared/config/db";
-import {
-  ADMIN_COOKIE,
-  ADMIN_COOKIE_MAX_AGE,
-  checkAdminPassword,
-  createSessionToken,
-} from "@/user/auth/adminSession";
+import { auth, signIn, signOut } from "@/user/auth/auth";
 import {
   publishDestinationDraft,
   unpublishDestination,
@@ -23,30 +17,25 @@ import {
   type Month,
 } from "@/shared/types/content";
 
-export async function loginAction(formData: FormData) {
-  const password = String(formData.get("password") ?? "");
-  if (!checkAdminPassword(password)) {
-    redirect("/admin/login?error=1");
-  }
-  const jar = await cookies();
-  jar.set(ADMIN_COOKIE, createSessionToken(), {
-    httpOnly: true,
-    sameSite: "lax",
-    secure: process.env.NODE_ENV === "production",
-    path: "/admin",
-    maxAge: ADMIN_COOKIE_MAX_AGE,
-  });
-  redirect("/admin");
+/** Start Google OAuth and return to /admin. The layout re-checks `isAdmin`, so
+ *  a signed-in non-admin lands back on the sign-in page with the explanation. */
+export async function adminSignInAction() {
+  await signIn("google", { redirectTo: "/admin" });
 }
 
 export async function logoutAction() {
-  const jar = await cookies();
-  jar.delete(ADMIN_COOKIE);
-  redirect("/admin/login");
+  await signOut({ redirectTo: "/admin/login" });
+}
+
+/** Guard for admin mutations invoked outside the protected layout's render. */
+async function requireAdmin() {
+  const session = await auth();
+  if (!session?.user?.isAdmin) redirect("/admin/login");
 }
 
 /** Merge editor field edits into a draft revision's JSON body. */
 export async function updateDraftAction(formData: FormData) {
+  await requireAdmin();
   const id = String(formData.get("revisionId"));
   const revision = await prisma.contentRevision.findUnique({ where: { id } });
   if (!revision) redirect("/admin/review");
@@ -101,6 +90,7 @@ export async function updateDraftAction(formData: FormData) {
 }
 
 export async function publishAction(formData: FormData) {
+  await requireAdmin();
   const id = String(formData.get("revisionId"));
   const result = await publishDestinationDraft(id);
   if (!result.ok) {
@@ -113,6 +103,7 @@ export async function publishAction(formData: FormData) {
 }
 
 export async function unpublishAction(formData: FormData) {
+  await requireAdmin();
   const destinationId = String(formData.get("destinationId"));
   await unpublishDestination(destinationId);
   await processOutbox(revalidatePath);
@@ -121,6 +112,7 @@ export async function unpublishAction(formData: FormData) {
 
 /** Generate an AI-assisted summary suggestion for a draft (never auto-applied). */
 export async function aiDraftAction(formData: FormData) {
+  await requireAdmin();
   const id = String(formData.get("revisionId"));
   const result = await draftWithAi(id);
   if (!result.ok) {

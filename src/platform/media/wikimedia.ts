@@ -50,6 +50,51 @@ function stripHtml(html: string): string {
     .trim();
 }
 
+/** Build a HeroImage from a Commons file's imageinfo, or null if not open-licensed. */
+async function heroFromCommonsFile(fileName: string): Promise<HeroImage | null> {
+  const infoRes = await fetch(
+    `${COMMONS_API}?action=query&format=json&prop=imageinfo&iiprop=extmetadata|url&titles=${encodeURIComponent(
+      "File:" + fileName,
+    )}`,
+    { headers: { "User-Agent": UA } },
+  );
+  if (!infoRes.ok) return null;
+  const info = (await infoRes.json()) as {
+    query?: {
+      pages?: Record<
+        string,
+        { imageinfo?: { url?: string; extmetadata?: Record<string, { value?: string }> }[] }
+      >;
+    };
+  };
+  const page = Object.values(info.query?.pages ?? {})[0];
+  const imageinfo = page?.imageinfo?.[0];
+  const meta = imageinfo?.extmetadata ?? {};
+  const licence = meta.LicenseShortName?.value ?? "";
+  const imageUrl = imageinfo?.url;
+  if (!imageUrl || !isAcceptableLicence(licence)) return null;
+
+  return {
+    imageUrl,
+    fileName,
+    licence,
+    licenceUrl: meta.LicenseUrl?.value ?? null,
+    creatorCredit: meta.Artist?.value ? stripHtml(meta.Artist.value) : "Wikimedia Commons",
+    sourcePageUrl: `https://commons.wikimedia.org/wiki/File:${encodeURIComponent(fileName)}`,
+  };
+}
+
+/**
+ * Fetch a hero from a specific Commons file (validated through the same licence
+ * gate). Used to override parks whose Wikipedia lead image isn't openly licensed
+ * (e.g. Glacier), so they get a real photo instead of the gradient fallback.
+ */
+export async function fetchHeroByCommonsFile(
+  fileName: string,
+): Promise<HeroImage | null> {
+  return heroFromCommonsFile(fileName);
+}
+
 /** Find an openly-licensed hero image for a park, or null. */
 export async function fetchParkHero(
   wikipediaTitle: string,

@@ -27,7 +27,12 @@ import {
   formatTripLength,
 } from "@/shared/utils/format";
 
-export const dynamic = "force-dynamic"; // see note in app/page.tsx
+// Deliberately dynamic (not ISR, unlike trails/home): this page reads per-user
+// save state (auth) and safety-critical live alerts that must never be served
+// stale from a cache. Reading auth() forces dynamic rendering regardless, so
+// caching here would either break per-user state or risk stale closures. The
+// durable content is still on-demand revalidated by the publish workflow.
+export const dynamic = "force-dynamic";
 
 export async function generateMetadata({
   params,

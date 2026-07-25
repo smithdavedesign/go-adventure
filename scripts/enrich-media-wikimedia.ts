@@ -9,13 +9,21 @@
  */
 import "dotenv/config";
 import { prisma } from "@/shared/config/db";
-import { fetchParkHero } from "@/platform/media/wikimedia";
+import { fetchParkHero, fetchHeroByCommonsFile } from "@/platform/media/wikimedia";
 
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));
 
+// Parks whose Wikipedia lead image isn't openly licensed → a hand-picked,
+// licence-verified Commons file so they still get a real hero (not the gradient).
+const HERO_OVERRIDE: Record<string, string> = {
+  "glacier-national-park": "Lake McDonald, Glacier National Park, Montana (crop).jpg",
+};
+
 async function main() {
+  // Optional: target one slug, e.g. `npm run enrich:media -- glacier-national-park`.
+  const only = process.argv.slice(2).find((a) => !a.startsWith("--"));
   const dests = await prisma.destination.findMany({
-    where: { status: "published" },
+    where: { status: "published", ...(only ? { slug: only } : {}) },
     select: { id: true, name: true, slug: true, heroAssetId: true },
     orderBy: { name: "asc" },
   });
@@ -23,7 +31,10 @@ async function main() {
   let set = 0;
   let skipped = 0;
   for (const d of dests) {
-    const hero = await fetchParkHero(d.name);
+    const override = HERO_OVERRIDE[d.slug];
+    const hero = override
+      ? await fetchHeroByCommonsFile(override)
+      : await fetchParkHero(d.name);
     if (!hero) {
       skipped++;
       console.log(`  - ${d.slug}: no openly-licensed lead image`);

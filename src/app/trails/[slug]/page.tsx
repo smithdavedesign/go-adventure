@@ -7,7 +7,19 @@ import { SafetyDisclosure } from "@/content/SafetyDisclosure";
 import { Badge } from "@/shared/ui/badge";
 import { formatDifficulty } from "@/shared/utils/format";
 
-export const dynamic = "force-dynamic"; // see note in app/page.tsx
+// ISR: trail pages are pure published content (no per-user or safety-critical
+// live data), so each is generated on first request and then served from cache,
+// revalidated hourly. We deliberately do NOT prerender the whole set at build:
+// there are 100+ trails and the build DB is the Supabase pooler (small client
+// limit), so a parallel build-time prerender storm exhausts it. On-demand
+// generation spreads that load across real traffic instead, with the same cache
+// benefit. New/edited trails appear on first request or the next revalidation.
+export const revalidate = 3600;
+export const dynamicParams = true;
+
+export async function generateStaticParams() {
+  return [];
+}
 
 export async function generateMetadata({
   params,

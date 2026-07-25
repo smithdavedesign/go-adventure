@@ -1,8 +1,7 @@
 import Link from "next/link";
-import { cookies } from "next/headers";
 import { redirect } from "next/navigation";
 import type { Metadata } from "next";
-import { ADMIN_COOKIE, verifySessionToken } from "@/user/auth/adminSession";
+import { auth } from "@/user/auth/auth";
 import { logoutAction } from "../actions";
 
 export const dynamic = "force-dynamic";
@@ -20,10 +19,11 @@ export default async function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
-  // Authoritative gate: full token verification (Node runtime). An invalid or
-  // missing session is redirected to the login page.
-  const jar = await cookies();
-  if (!verifySessionToken(jar.get(ADMIN_COOKIE)?.value)) {
+  // Authoritative gate: an authenticated Auth.js session whose user carries the
+  // `isAdmin` role (PRD M7). Signed-out users and non-admins are sent to the
+  // admin sign-in page, which explains the Google + is_admin requirement.
+  const session = await auth();
+  if (!session?.user?.isAdmin) {
     redirect("/admin/login");
   }
 

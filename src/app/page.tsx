@@ -3,16 +3,22 @@ import { listPublishedDestinations } from "@/content/destinations/queries";
 import { EMPTY_FILTERS } from "@/content/search/filters";
 import { DestinationCard } from "@/content/destinations/DestinationCard";
 
-// M2: rendered at request time. These pages read the DB, and static generation
-// at build would require a database in CI (there isn't one yet). ISR/static
-// generation for published editorial pages — the PRD's intended caching model —
-// is wired at M6 alongside a CI database and the outbox→revalidate path.
-// See docs/adr/0001 caching model.
-export const dynamic = "force-dynamic";
+// ISR (PRD caching model): the home page is editorial and prerenders, then
+// revalidates hourly. The publish workflow also revalidates "/" on-demand
+// (outbox → revalidatePath), so new featured content appears immediately.
+// The featured read is best-effort: if the DB is unreachable at build (e.g. CI
+// without a database) or during a background revalidation, the page still
+// renders (empty featured strip) rather than failing the build — ISR keeps
+// serving the last good version. See docs/adr/0001 caching model.
+export const revalidate = 3600;
 
 export default async function HomePage() {
-  const destinations = await listPublishedDestinations(EMPTY_FILTERS);
-  const featured = destinations.slice(0, 3);
+  let featured: Awaited<ReturnType<typeof listPublishedDestinations>> = [];
+  try {
+    featured = (await listPublishedDestinations(EMPTY_FILTERS)).slice(0, 3);
+  } catch {
+    featured = [];
+  }
 
   return (
     <main>
