@@ -4,6 +4,7 @@ import { notFound } from "next/navigation";
 import { getTrailBySlug, getTrailMetadataBySlug } from "@/content/trails/queries";
 import { DestinationMap } from "@/content/destinations/DestinationMap";
 import { TrailRouteAndProfile } from "@/content/trails/TrailRouteAndProfile";
+import { PhotoGallery } from "@/content/destinations/PhotoGallery";
 import { ForecastCard } from "@/content/destinations/ForecastCard";
 import { getFreshForecastNear } from "@/platform/forecasts/snapshots";
 import { AlertBanner } from "@/content/destinations/AlertBanner";
@@ -46,6 +47,7 @@ export default async function TrailPage({
     tags,
     route,
     elevationProfile,
+    parkPhotos,
     destinations,
   } = trail;
 
@@ -63,8 +65,37 @@ export default async function TrailPage({
       ])
     : [null, null];
 
+  // JSON-LD: only real on-page facts (name, geo, containing park). No ratings or
+  // availability (PRD SEO).
+  const jsonLd = {
+    "@context": "https://schema.org",
+    "@type": "TouristAttraction",
+    name,
+    ...(center
+      ? {
+          geo: {
+            "@type": "GeoCoordinates",
+            latitude: center.lat,
+            longitude: center.lng,
+          },
+        }
+      : {}),
+    ...(destinations[0]
+      ? {
+          containedInPlace: {
+            "@type": "TouristDestination",
+            name: destinations[0].name,
+          },
+        }
+      : {}),
+  };
+
   return (
     <main className="mx-auto max-w-4xl px-4 py-10">
+      <script
+        type="application/ld+json"
+        dangerouslySetInnerHTML={{ __html: JSON.stringify(jsonLd) }}
+      />
       {destinations[0] && (
         <Link
           href={`/destinations/${destinations[0].slug}`}
@@ -123,6 +154,16 @@ export default async function TrailPage({
             />
           </section>
         )
+      )}
+
+      {/* Park photos (trails have no trail-specific gallery) — clearly attributed. */}
+      {parkPhotos.length > 0 && (
+        <PhotoGallery
+          photos={parkPhotos}
+          heading={
+            destinations[0] ? `Photos from ${destinations[0].name}` : "Photos"
+          }
+        />
       )}
 
       {/* Weather outlook near the trailhead — only when a fresh snapshot exists. */}

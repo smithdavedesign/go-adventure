@@ -5,11 +5,17 @@ import type { GalleryPhoto } from "@/shared/types/content";
  * Each tile carries its required per-image attribution. Uses CSS background
  * images (CSP-friendly, same approach as the hero) rather than <img>.
  */
-export function PhotoGallery({ photos }: { photos: GalleryPhoto[] }) {
+export function PhotoGallery({
+  photos,
+  heading = "Photos",
+}: {
+  photos: GalleryPhoto[];
+  heading?: string;
+}) {
   if (photos.length === 0) return null;
   return (
     <section className="mt-10">
-      <h2 className="mb-3 text-lg font-semibold">Photos</h2>
+      <h2 className="mb-3 text-lg font-semibold">{heading}</h2>
       <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
         {photos.map((p) => (
           <figure

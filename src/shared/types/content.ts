@@ -157,4 +157,6 @@ export type TrailDetail = TrailSummary & {
   destinations: { name: string; slug: string }[];
   /** Sampled elevation profile along the route, or null if not captured. */
   elevationProfile: ElevationPoint[] | null;
+  /** The parent park's gallery photos (trails have no trail-specific photos). */
+  parkPhotos: GalleryPhoto[];
 };

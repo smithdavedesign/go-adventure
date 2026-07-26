@@ -3,7 +3,11 @@
  */
 import { prisma } from "@/shared/config/db";
 import { fetchTrailRoutes } from "@/content/geo";
-import type { ElevationPoint, TrailDetail } from "@/shared/types/content";
+import type {
+  ElevationPoint,
+  GalleryPhoto,
+  TrailDetail,
+} from "@/shared/types/content";
 
 /** Read a trail's stored elevation profile (a FactAssertion) — the raw {d,e}
  *  points, before coordinates are zipped in. */
@@ -62,7 +66,20 @@ export async function getTrailBySlug(slug: string): Promise<TrailDetail | null> 
     include: {
       destinations: {
         where: { destination: { status: "published" } },
-        include: { destination: { select: { name: true, slug: true } } },
+        include: {
+          destination: {
+            select: {
+              name: true,
+              slug: true,
+              photos: {
+                where: { moderationStatus: "approved", originalUrl: { not: null } },
+                select: { id: true, originalUrl: true, creatorCredit: true, altText: true },
+                orderBy: { createdAt: "asc" },
+                take: 6,
+              },
+            },
+          },
+        },
       },
     },
   });
@@ -74,6 +91,17 @@ export async function getTrailBySlug(slug: string): Promise<TrailDetail | null> 
   ]);
   const route = routes.get(row.id) ?? null;
   const elevationProfile = withCoordinates(rawProfile, route);
+
+  // Trail-specific photos aren't reliably available; surface the parent park's
+  // gallery instead (clearly captioned as park photos on the page).
+  const parkPhotos: GalleryPhoto[] = (row.destinations[0]?.destination.photos ?? [])
+    .filter((p): p is typeof p & { originalUrl: string } => !!p.originalUrl)
+    .map((p) => ({
+      id: p.id,
+      imageUrl: p.originalUrl,
+      credit: p.creatorCredit,
+      alt: p.altText,
+    }));
 
   return {
     id: row.id,
@@ -94,7 +122,17 @@ export async function getTrailBySlug(slug: string): Promise<TrailDetail | null> 
       slug: dt.destination.slug,
     })),
     elevationProfile,
+    parkPhotos,
   };
+}
+
+/** All published trail slugs — for the sitemap. */
+export async function listPublishedTrailSlugs(): Promise<string[]> {
+  const rows = await prisma.trail.findMany({
+    where: { status: "published" },
+    select: { slug: true },
+  });
+  return rows.map((r) => r.slug);
 }
 
 /** Lightweight published trail lookup for route metadata generation. */
