@@ -106,6 +106,13 @@ export default function PrivacyPage() {
               withdraw at any time via your browser settings.
             </li>
           </ul>
+          <p className="mt-2">
+            <strong>International transfers.</strong> Our infrastructure
+            providers are based in the United States, so your data is
+            transferred to and stored in the US. Where we transfer personal data
+            of users in the EEA or UK, we rely on the appropriate safeguards
+            offered by these providers, such as Standard Contractual Clauses.
+          </p>
         </div>
 
         <div>
@@ -182,6 +189,28 @@ export default function PrivacyPage() {
               {CONTACT_EMAIL}
             </a>
             . We will respond within 30 days.
+          </p>
+          <p className="mt-2">
+            <strong>California residents.</strong> Under the CCPA/CPRA you have
+            the right to know what personal information we collect, to delete it,
+            to correct it, and to opt out of its &ldquo;sale&rdquo; or
+            &ldquo;sharing.&rdquo; We do not sell or share your personal
+            information as those terms are defined, and we will not discriminate
+            against you for exercising these rights. To make a request, use the{" "}
+            <a
+              href="/account"
+              className="underline underline-offset-4 hover:text-foreground"
+            >
+              Account page
+            </a>{" "}
+            or email{" "}
+            <a
+              href={`mailto:${CONTACT_EMAIL}`}
+              className="underline underline-offset-4 hover:text-foreground"
+            >
+              {CONTACT_EMAIL}
+            </a>
+            .
           </p>
         </div>
 

@@ -26,7 +26,7 @@ Source registry complete; commercial terms, OSM compliance, media rights, notice
 ### 3. Safety — 🟡 (green-leaning) owner: Content + engineering
 Official alert/permit links work; stale-data behaviour, sensitive-location policy, disclosures tested.
 - 🟢 Permit info links to official land-manager pages; safety + data-freshness disclosure appears on destination/trail pages; forecast and alert snapshots are freshness-gated (`ForecastSnapshot`/`AlertSnapshot`) and are dropped when stale.
-- 🟡 **Remaining:** written sensitive-location policy, monitored alert-refresh SLO/runbook, and periodic human spot-checks that official permit links still resolve.
+- 🟡 **Remaining:** sensitive-location policy is now **drafted** ([`docs/legal/sensitive-location-policy.md`](legal/sensitive-location-policy.md)) and awaits adoption; still open are a monitored alert-refresh SLO/runbook and periodic human spot-checks that official permit links still resolve.
 
 ### 4. Data operations — 🟢/🟡 owner: Engineering lead
 Ingestion, retries/DLQ, outbox, reconciliation, data-health dashboard, manual recovery runbook exercised.
@@ -37,7 +37,7 @@ Ingestion, retries/DLQ, outbox, reconciliation, data-health dashboard, manual re
 Threat model, roles/RLS, OAuth, secret handling, analytics consent, privacy/terms, deletion/export, backup restore.
 - 🟢 Secure headers/CSP, rate limiting, allow-list validation, parameterised SQL, Auth.js DB sessions, account export (no secrets) + deletion, consent-gated event dictionary that never emits PII. **Admin is now gated by an authenticated Google account with `isAdmin`** — the interim password gate is retired, and each admin server action re-checks the role (not just the page render, closing the direct-POST gap). Grant the role with `npm run set-admin -- <email>`. See [security.md](security.md).
 - 🟡 **RLS drafted:** least-privilege roles (web / ingest / read-only), a published-only read policy, and fail-closed user-isolation policies are written in [`prisma/rls-policies.sql`](../prisma/rls-policies.sql). Applying them (with DB-owner creds + per-context connection strings) is a review/apply step, not more code.
-- 🔴 **Blocking:** apply the RLS/roles, managed secrets + rotation, threat-model review, privacy policy / terms / cookie notice, backup + tested restore ([ADR-0009](adr/0009-backups-rpo-rto.md)), production Google OAuth callback + first admin promotion.
+- 🔴 **Blocking:** apply the RLS/roles, managed secrets + rotation, threat-model review, backup + tested restore ([ADR-0009](adr/0009-backups-rpo-rto.md)), production Google OAuth callback + first admin promotion. **Privacy policy / terms / cookie notice are now drafted** (see gate D + [`docs/legal-readiness.md`](legal-readiness.md)) — remaining here is your details + human/legal review, not authoring.
 
 ### 6. Reliability — 🟡 owner: Engineering lead
 Performance SLO smoke test, error monitoring, uptime checks, source-freshness alerts, incident drills.
@@ -96,10 +96,12 @@ The corpus now exists: **28 national parks are published** with sourced facts, r
 
 ### D. Legal & policy deliverables (you / legal)
 
-- **D1.** Source commercial-terms + media-rights review for NPS, Recreation.gov, OSM/ODbL, Open-Meteo ([ADR-0006](adr/0006-source-licences-and-refresh-contracts.md)).
-- **D2.** Privacy policy, terms of use, cookie/analytics consent notice, copyright/takedown contact — required before user accounts + analytics go live.
-- **D3.** Sensitive-location policy (don't publish precise geometry for restricted/vulnerable sites).
-- **D4.** A named incident-response owner + severity/containment/notification path.
+**Drafting is done.** See [`docs/legal-readiness.md`](legal-readiness.md) for the full solo-founder map — what exists, what's drafted, and the short "only you" list (three real details, one targeted lawyer pass, one domain). All drafts are marked review-required and carry `[BRACKETED]` blanks only you can fill.
+
+- **D1.** Source commercial-terms + media-rights review for NPS, Recreation.gov, OSM/ODbL, Open-Meteo ([ADR-0006](adr/0006-source-licences-and-refresh-contracts.md)). ⚠️ **Still needs a lawyer pass** — summary prepared in [`source-registry.md`](source-registry.md); the review confirms your *use* fits each *license*.
+- **D2.** Privacy policy, terms of use, cookie/analytics consent notice, copyright/takedown contact. **Privacy + Terms drafted** ([`/privacy`](../src/app/privacy/page.tsx) — now with CCPA + international-transfer clauses; [`/terms`](../src/app/terms/page.tsx) — has "as is" disclaimer, limitation of liability, safety, governing law). **Copyright/takedown drafted** at [`docs/legal/copyright-takedown.md`](legal/copyright-takedown.md) (needs a real designated agent). Cookie-notice **text** is in the policy; the **consent-banner UI** is deferred until analytics is turned on (GA4 parked), so not blocking today. Remaining: your details + human/legal review.
+- **D3.** Sensitive-location policy. **Drafted** at [`docs/legal/sensitive-location-policy.md`](legal/sensitive-location-policy.md) — official-sources-only, no user-submitted geometry, editorial checkpoint, land-manager removal path. Remaining: you adopt it.
+- **D4.** Incident-response owner + severity/containment/notification path. **Drafted** at [`docs/legal/incident-response.md`](legal/incident-response.md) — P0–P3 severities, GDPR 72-hour breach clock, rotate-first containment, comms templates. Remaining: you name yourself as owner + fill contacts.
 
 ### E. Operations (you, with my help wiring)
 
