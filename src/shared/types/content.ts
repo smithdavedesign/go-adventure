@@ -148,8 +148,9 @@ export type DestinationDetail = DestinationCard & {
   lastVerifiedAt: Date | null;
 };
 
-/** One point on a trail's elevation profile: cumulative distance (mi) + elevation (ft). */
-export type ElevationPoint = { d: number; e: number };
+/** One point on a trail's elevation profile: cumulative distance (mi) + elevation
+ *  (ft), plus the geographic coordinate so the chart cursor can sync to the map. */
+export type ElevationPoint = { d: number; e: number; lng: number; lat: number };
 
 export type TrailDetail = TrailSummary & {
   /** Destinations this trail is listed under, for back-navigation. */

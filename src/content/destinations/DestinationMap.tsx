@@ -66,6 +66,9 @@ export function DestinationMap({
   area,
   destinationName,
   hoveredTrailName,
+  hoverPoint,
+  hoverPoints,
+  onHoverPointChange,
   className,
 }: {
   center: Coordinates;
@@ -75,11 +78,27 @@ export function DestinationMap({
   destinationName?: string;
   /** Trail name to highlight on the map (route line brightens). */
   hoveredTrailName?: string | null;
+  /** Position of a moving "cursor" marker on the route (synced to the elevation
+   *  chart). null hides it. */
+  hoverPoint?: { lng: number; lat: number } | null;
+  /** Route points to detect on map-hover (drives the reverse chart sync). */
+  hoverPoints?: { lng: number; lat: number }[];
+  /** Fires with the nearest route-point index while hovering the map, or null. */
+  onHoverPointChange?: (index: number | null) => void;
   className?: string;
 }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<MapLibreMap | null>(null);
   const initialBoundsRef = useRef<LngLatBounds | null>(null);
+  const hoverMarkerRef = useRef<Marker | null>(null);
+  // Latest hover inputs, read by the map's persistent mousemove handler without
+  // re-initialising the map.
+  const hoverPointsRef = useRef(hoverPoints);
+  const onHoverChangeRef = useRef(onHoverPointChange);
+  useEffect(() => {
+    hoverPointsRef.current = hoverPoints;
+    onHoverChangeRef.current = onHoverPointChange;
+  }, [hoverPoints, onHoverPointChange]);
   const [failed, setFailed] = useState(false);
   const [mapLoaded, setMapLoaded] = useState(false);
 
@@ -205,6 +224,36 @@ export function DestinationMap({
           });
         }
 
+        // A moving "elevation cursor" marker, hidden until a hover position is
+        // set (by the chart, or by hovering the route below).
+        const hoverEl = document.createElement("div");
+        hoverEl.style.cssText =
+          "width:16px;height:16px;border-radius:50%;background:#c2410c;border:3px solid #fff;box-shadow:0 0 0 3px rgba(194,65,12,0.3);display:none;";
+        hoverMarkerRef.current = new Marker({ element: hoverEl })
+          .setLngLat([center.lng, center.lat])
+          .addTo(map);
+
+        // L3 (reverse sync): hovering the map near the route reports the nearest
+        // route-point index so the chart can highlight it. Uses refs for the
+        // latest points/callback so the handler needn't be re-bound.
+        map.on("mousemove", (e) => {
+          const pts = hoverPointsRef.current;
+          const cb = onHoverChangeRef.current;
+          if (!map || !cb || !pts?.length) return;
+          let best = -1;
+          let bestDist = 18; // px hit radius near the line
+          for (let i = 0; i < pts.length; i++) {
+            const px = map.project([pts[i].lng, pts[i].lat]);
+            const dist = Math.hypot(px.x - e.point.x, px.y - e.point.y);
+            if (dist < bestDist) {
+              bestDist = dist;
+              best = i;
+            }
+          }
+          cb(best >= 0 ? best : null);
+        });
+        map.on("mouseout", () => onHoverChangeRef.current?.(null));
+
         map.fitBounds(initialBounds, {
           padding: { top: 48, right: 48, bottom: 48, left: 48 },
           maxZoom: 12,
@@ -221,6 +270,7 @@ export function DestinationMap({
       cancelled = true;
       map?.remove();
       mapRef.current = null;
+      hoverMarkerRef.current = null;
     };
   }, [area, center, routes, destinationName]);
 
@@ -255,6 +305,19 @@ export function DestinationMap({
       map.setPaintProperty("trails-line", "line-width", 4);
     }
   }, [hoveredTrailName, mapLoaded]);
+
+  // Move/show the elevation-cursor marker as the shared hover position changes.
+  useEffect(() => {
+    const marker = hoverMarkerRef.current;
+    if (!marker || !mapLoaded) return;
+    const el = marker.getElement();
+    if (hoverPoint) {
+      marker.setLngLat([hoverPoint.lng, hoverPoint.lat]);
+      el.style.display = "";
+    } else {
+      el.style.display = "none";
+    }
+  }, [hoverPoint, mapLoaded]);
 
   const resetView = () => {
     const map = mapRef.current;

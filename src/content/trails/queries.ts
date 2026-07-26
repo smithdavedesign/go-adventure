@@ -5,10 +5,11 @@ import { prisma } from "@/shared/config/db";
 import { fetchTrailRoutes } from "@/content/geo";
 import type { ElevationPoint, TrailDetail } from "@/shared/types/content";
 
-/** Read a trail's stored elevation profile (a FactAssertion), or null. */
-async function getTrailElevationProfile(
+/** Read a trail's stored elevation profile (a FactAssertion) — the raw {d,e}
+ *  points, before coordinates are zipped in. */
+async function getRawElevationProfile(
   trailId: string,
-): Promise<ElevationPoint[] | null> {
+): Promise<{ d: number; e: number }[] | null> {
   const fact = await prisma.factAssertion.findFirst({
     where: { subjectType: "trail", subjectId: trailId, field: "elevationProfile" },
     orderBy: { verifiedAt: "desc" },
@@ -17,13 +18,42 @@ async function getTrailElevationProfile(
   const value = fact?.value;
   if (!Array.isArray(value)) return null;
   const points = value.filter(
-    (p): p is ElevationPoint =>
+    (p): p is { d: number; e: number } =>
       typeof p === "object" &&
       p !== null &&
-      typeof (p as ElevationPoint).d === "number" &&
-      typeof (p as ElevationPoint).e === "number",
+      typeof (p as { d: unknown }).d === "number" &&
+      typeof (p as { e: unknown }).e === "number",
   );
   return points.length > 1 ? points : null;
+}
+
+/** Evenly pick `count` points from a list by index (matches the backfill's
+ *  sampling, so the i-th coordinate lines up with the i-th stored {d,e}). */
+function sampleByIndex<T>(items: T[], count: number): T[] {
+  if (items.length <= count) return items;
+  const step = (items.length - 1) / (count - 1);
+  return Array.from({ length: count }, (_, i) => items[Math.round(i * step)]);
+}
+
+/** Zip the stored {d,e} profile with route coordinates so each chart point knows
+ *  its map position. The profile was sampled from this same route (max 40 pts),
+ *  so re-sampling the flattened route to the profile length re-aligns the points. */
+function withCoordinates(
+  raw: { d: number; e: number }[] | null,
+  route: [number, number][][] | null,
+): ElevationPoint[] | null {
+  if (!raw || !route) return null;
+  const flat = route.flat();
+  if (flat.length < 2) return null;
+  const coords = sampleByIndex(flat, Math.min(raw.length, 40));
+  const n = Math.min(raw.length, coords.length);
+  if (n < 2) return null;
+  return Array.from({ length: n }, (_, i) => ({
+    d: raw[i].d,
+    e: raw[i].e,
+    lng: coords[i][0],
+    lat: coords[i][1],
+  }));
 }
 
 export async function getTrailBySlug(slug: string): Promise<TrailDetail | null> {
@@ -38,10 +68,12 @@ export async function getTrailBySlug(slug: string): Promise<TrailDetail | null> 
   });
   if (!row) return null;
 
-  const [routes, elevationProfile] = await Promise.all([
+  const [routes, rawProfile] = await Promise.all([
     fetchTrailRoutes([row.id]),
-    getTrailElevationProfile(row.id),
+    getRawElevationProfile(row.id),
   ]);
+  const route = routes.get(row.id) ?? null;
+  const elevationProfile = withCoordinates(rawProfile, route);
 
   return {
     id: row.id,
@@ -56,7 +88,7 @@ export async function getTrailBySlug(slug: string): Promise<TrailDetail | null> 
     // A trail viewed on its own page has no single editorial "representative"
     // status — that's a property of a destination↔trail listing, not the trail.
     isRepresentative: false,
-    route: routes.get(row.id) ?? null,
+    route,
     destinations: row.destinations.map((dt) => ({
       name: dt.destination.name,
       slug: dt.destination.slug,

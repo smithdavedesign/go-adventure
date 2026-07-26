@@ -3,7 +3,7 @@ import Link from "next/link";
 import { notFound } from "next/navigation";
 import { getTrailBySlug, getTrailMetadataBySlug } from "@/content/trails/queries";
 import { DestinationMap } from "@/content/destinations/DestinationMap";
-import { ElevationChart } from "@/content/trails/ElevationChart";
+import { TrailRouteAndProfile } from "@/content/trails/TrailRouteAndProfile";
 import { ForecastCard } from "@/content/destinations/ForecastCard";
 import { getFreshForecastNear } from "@/platform/forecasts/snapshots";
 import { AlertBanner } from "@/content/destinations/AlertBanner";
@@ -101,27 +101,28 @@ export default async function TrailPage({
         </div>
       )}
 
-      {elevationProfile && elevationProfile.length > 1 && (
-        <section className="mt-8">
-          <h2 className="mb-3 text-lg font-semibold">Elevation profile</h2>
-          <ElevationChart
-            profile={elevationProfile}
-            gainFt={elevationGainFt}
-            distanceMiles={distanceMiles}
-          />
-        </section>
-      )}
-
-      {center && (
-        <section className="mt-8">
-          <h2 className="mb-3 text-lg font-semibold">Route</h2>
-          <DestinationMap
-            center={center}
-            routes={route ? [{ name, route }] : []}
-            destinationName={name}
-            className="h-[420px] w-full"
-          />
-        </section>
+      {elevationProfile && center && route ? (
+        // Interactive elevation profile + route map with shared hover (L1–L3).
+        <TrailRouteAndProfile
+          name={name}
+          center={center}
+          route={route}
+          elevationProfile={elevationProfile}
+          gainFt={elevationGainFt}
+          distanceMiles={distanceMiles}
+        />
+      ) : (
+        center && (
+          <section className="mt-8">
+            <h2 className="mb-3 text-lg font-semibold">Route</h2>
+            <DestinationMap
+              center={center}
+              routes={route ? [{ name, route }] : []}
+              destinationName={name}
+              className="h-[420px] w-full"
+            />
+          </section>
+        )
       )}
 
       {/* Weather outlook near the trailhead — only when a fresh snapshot exists. */}
