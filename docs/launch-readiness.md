@@ -51,7 +51,7 @@ Usability sessions show target users understand *why* a result fits and can reac
 
 ### 8. SEO — 🟢/🟡 (green-leaning) owner: Growth/content lead
 Only approved canonical pages index; metadata, sitemaps, structured data, noindex rules validated.
-- 🟢 `robots.ts` (disallows admin/api/account/saved/signin), `sitemap.ts` (published canonical pages only — drafts have no URL), per-route `noindex` on non-content pages, JSON-LD with only real on-page facts, locale-aware `<title>` templates, Open Graph images from cleared hero media, and **ISR-served static HTML for the home + trail pages** (crawler-friendly, fast) with real photos on the 28 live parks.
+- 🟢 `robots.ts` (disallows admin/api/account/saved/signin), `sitemap.ts` (published canonical pages only — home, explore, browse, all 28 destinations **and 165 trails**; the query-driven /compare is excluded; drafts have no URL), per-route `noindex` on non-content pages, JSON-LD with only real on-page facts (`TouristDestination` on destinations, `TouristAttraction` on trails), locale-aware `<title>` templates, Open Graph images from cleared hero media, and static/ISR home + real photos across destinations and trail pages.
 - 🟡 **Remaining:** Search Console verification, `hreflang` once `es` ships, and SEO validation over the final human-curated launch corpus.
 
 ## What's needed from you
