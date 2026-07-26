@@ -20,6 +20,7 @@
     "enrich:media": "tsx scripts/enrich-media-wikimedia.ts",
     "enrich:gallery": "tsx scripts/enrich-media-gallery.ts",
     "enrich:highlights": "tsx scripts/enrich-highlights.ts",
+    "enrich:elevation": "tsx scripts/enrich-elevation-profile.ts",
     "set-admin": "tsx scripts/set-admin.ts",
     "alerts:refresh": "tsx src/platform/alerts/runner.ts",
     "ingest:trails": "tsx src/platform/ingestion/osm/runner.ts",

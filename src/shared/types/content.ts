@@ -148,7 +148,12 @@ export type DestinationDetail = DestinationCard & {
   lastVerifiedAt: Date | null;
 };
 
+/** One point on a trail's elevation profile: cumulative distance (mi) + elevation (ft). */
+export type ElevationPoint = { d: number; e: number };
+
 export type TrailDetail = TrailSummary & {
   /** Destinations this trail is listed under, for back-navigation. */
   destinations: { name: string; slug: string }[];
+  /** Sampled elevation profile along the route, or null if not captured. */
+  elevationProfile: ElevationPoint[] | null;
 };

@@ -3,7 +3,28 @@
  */
 import { prisma } from "@/shared/config/db";
 import { fetchTrailRoutes } from "@/content/geo";
-import type { TrailDetail } from "@/shared/types/content";
+import type { ElevationPoint, TrailDetail } from "@/shared/types/content";
+
+/** Read a trail's stored elevation profile (a FactAssertion), or null. */
+async function getTrailElevationProfile(
+  trailId: string,
+): Promise<ElevationPoint[] | null> {
+  const fact = await prisma.factAssertion.findFirst({
+    where: { subjectType: "trail", subjectId: trailId, field: "elevationProfile" },
+    orderBy: { verifiedAt: "desc" },
+    select: { value: true },
+  });
+  const value = fact?.value;
+  if (!Array.isArray(value)) return null;
+  const points = value.filter(
+    (p): p is ElevationPoint =>
+      typeof p === "object" &&
+      p !== null &&
+      typeof (p as ElevationPoint).d === "number" &&
+      typeof (p as ElevationPoint).e === "number",
+  );
+  return points.length > 1 ? points : null;
+}
 
 export async function getTrailBySlug(slug: string): Promise<TrailDetail | null> {
   const row = await prisma.trail.findFirst({
@@ -17,7 +38,10 @@ export async function getTrailBySlug(slug: string): Promise<TrailDetail | null> 
   });
   if (!row) return null;
 
-  const routes = await fetchTrailRoutes([row.id]);
+  const [routes, elevationProfile] = await Promise.all([
+    fetchTrailRoutes([row.id]),
+    getTrailElevationProfile(row.id),
+  ]);
 
   return {
     id: row.id,
@@ -37,6 +61,7 @@ export async function getTrailBySlug(slug: string): Promise<TrailDetail | null> 
       name: dt.destination.name,
       slug: dt.destination.slug,
     })),
+    elevationProfile,
   };
 }
 

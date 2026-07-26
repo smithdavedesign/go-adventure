@@ -46,6 +46,48 @@ export async function fetchElevationGainFt(
   return cumulativeGainFt(json.elevation);
 }
 
+const EARTH_MI = 3958.8;
+function haversineMiles(a: [number, number], b: [number, number]): number {
+  const toRad = (d: number) => (d * Math.PI) / 180;
+  const dLat = toRad(b[1] - a[1]);
+  const dLng = toRad(b[0] - a[0]);
+  const s =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(a[1])) * Math.cos(toRad(b[1])) * Math.sin(dLng / 2) ** 2;
+  return 2 * EARTH_MI * Math.asin(Math.sqrt(s));
+}
+
+/**
+ * Sampled elevation profile along a route: cumulative distance (miles) +
+ * elevation (feet) at each sampled point. One Open-Meteo call per route.
+ */
+export async function fetchElevationProfile(
+  routePoints: [number, number][],
+): Promise<{ d: number; e: number }[]> {
+  const sample = sampleRoute(routePoints);
+  if (sample.length < 2) return [];
+  const lats = sample.map(([, lat]) => lat).join(",");
+  const lngs = sample.map(([lng]) => lng).join(",");
+  const res = await fetch(
+    `${OPEN_METEO_ELEVATION}?latitude=${lats}&longitude=${lngs}`,
+  );
+  if (!res.ok) throw new Error(`Open-Meteo elevation responded ${res.status}`);
+  const json = (await res.json()) as { elevation?: number[] };
+  const elev = json.elevation;
+  if (!elev || elev.length !== sample.length) return [];
+
+  const out: { d: number; e: number }[] = [];
+  let cumulative = 0;
+  for (let i = 0; i < sample.length; i++) {
+    if (i > 0) cumulative += haversineMiles(sample[i - 1], sample[i]);
+    out.push({
+      d: Math.round(cumulative * 100) / 100,
+      e: Math.round(elev[i] * METERS_TO_FEET),
+    });
+  }
+  return out;
+}
+
 /** Naismith's rule: 1h per 3 miles + 1h per 2000 ft of ascent. */
 export function estimateDurationHours(
   distanceMiles: number,
