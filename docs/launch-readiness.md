@@ -64,8 +64,8 @@ Nothing here is blocked on more application code — the platform is built and w
 
 | # | Service | Where | Produces / env var | Unblocks | Effort | Cost |
 |---|---|---|---|---|---|---|
-| ~~A1~~ | ~~**Supabase** project~~ | ✅ **Done** — project `mhftgnjjqfceojmxomls` (us-west-2). All 7 migrations applied, seed corpus live. `DATABASE_URL` (pooler) + `DIRECT_URL` set in `.env`. | — | — | — |
-| A2 | **Vercel** project | vercel.com | Deploy target; set all env vars in the dashboard | Public hosting, ISR, preview deploys | ~20 min | Free→$20 |
+| ~~A1~~ | ~~**Supabase** project~~ | ✅ **Done** — project `mhftgnjjqfceojmxomls` (us-west-2). Migrations applied, corpus live. Locally `DATABASE_URL` = transaction pooler (6543, `?pgbouncer=true`) for the serverless runtime; `DIRECT_URL` = session pooler (5432) for `prisma migrate`. See `.env.example` for the two-pooler rationale. | — | — | — |
+| A2 | **Vercel** project | vercel.com | Deploy target; **set `DATABASE_URL` to the transaction pooler (6543) + `DIRECT_URL` to the session pooler (5432)** to avoid EMAXCONNSESSION — plus the rest of the env vars | Public hosting, ISR, preview deploys | ~20 min | Free→$20 |
 | A3 | **Cloudflare R2** bucket | dash.cloudflare.com | `R2_ACCOUNT_ID`, `R2_ACCESS_KEY_ID`, `R2_SECRET_ACCESS_KEY`, `R2_BUCKET_NAME`, `R2_PUBLIC_URL` | Real media + raw source captures (replaces local `.ingestion-raw`) | ~20 min | ~$0–5 |
 | ~~A4~~ | ~~**NPS API key**~~ | ✅ **Done** — `NPS_API_KEY` set locally + Vercel. Smoke test: `npm run test:smoke`. Live ingest verified: 50 records drafted, 0 dead-lettered. | — | — | — |
 | ~~A5~~ | ~~**Recreation.gov (RIDB) key**~~ | ✅ **Done** — `RECREATION_GOV_API_KEY` set locally + Vercel. Smoke test: `npm run test:smoke`. | — | — | — |

@@ -556,7 +556,7 @@ Bounded domains within the monorepo. Explicit import rules prevent coupling and 
 
 **Rendering & caching (as-built, per ADR-0001):**
 - **Home** — static + ISR (`revalidate = 3600`); the publish workflow also revalidates `/` on-demand via the outbox → `revalidatePath`.
-- **Trail pages** — on-demand ISR: generated on first request, then cached and revalidated hourly. Not prerendered at build (100+ trails against the Supabase pooler would exhaust its client limit; on-demand spreads that across traffic).
+- **Trail pages** — `force-dynamic` (since M12): they now carry weather + NPS alerts near the trailhead, which must never be served stale from a cache. (They were on-demand ISR before live conditions were added.)
 - **Destination pages** — deliberately `force-dynamic`: they read per-user save state (`auth()`) and safety-critical live alerts that must never be served stale, and reading `auth()` forces dynamic regardless.
 - **Explore** — `force-dynamic` (results depend on the query string).
 - **Root layout is static** — the header reads session on the client (`Providers` + `UserNav` via Auth.js `useSession`) rather than calling `auth()` in the layout, which would otherwise force every page (including the ISR pages) to render dynamically.

@@ -66,7 +66,7 @@ render site in the product. Removing a source means removing its render site too
 |---|---|
 | Owner | Open-Meteo (open-data weather) |
 | Adapter | `src/platform/forecasts/openMeteo.ts` (forecast), `src/platform/ingestion/osm/elevation.ts` (elevation) |
-| Endpoints | `GET /v1/forecast` (daily outlook), Elevation API (batch point elevations for trail gain) |
+| Endpoints | `GET /v1/forecast` (daily outlook), Elevation API (batch point elevations for trail gain + the sampled elevation profile behind the interactive chart) |
 | External ID | Lat/lng of the destination point / sampled route points |
 | Auth | None (keyless free non-commercial tier; `OPEN_METEO_API_KEY` only for the paid tier) |
 | Rate limit | Free tier is generous but throttles bursts (observed 429 when sampling elevation for 138 trails back-to-back) — batch requests, sample ≤ 40 pts/route. |

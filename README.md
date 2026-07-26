@@ -2,7 +2,7 @@
 
 > The "Skyscanner Explore" experience for outdoor adventure. Users come to discover *where* to go, not just to research a place they've already chosen.
 
-**Status:** The Phase 1 platform is built end-to-end (engineering milestones M0–M11), and a **real 28-park corpus is live** — sourced facts/fees/alerts, representative OSM trails (28/28), Open-Meteo forecasts, and open-licensed Wikimedia hero photos (28/28), all attributed and freshness-gated. Discovery + search with the binding zero-result relaxation, a provenance-backed content model, ingestion + editorial publishing, Google auth + saved destinations, admin gated on `isAdmin`, AI-assisted drafting, and ISR for published pages are live — 105 unit tests + 16 E2E (incl. axe accessibility) green, across 5 live sources (3 keyless, 2 keyed). What's left is editorial rubric sign-off, legal sign-off, and operational ownership — see [docs/launch-readiness.md](docs/launch-readiness.md). See [Status](#status) below.
+**Status:** The Phase 1 platform is built end-to-end (engineering milestones M0–M12), and a **real 28-park corpus is live** — sourced facts/fees/alerts, representative OSM trails (28/28), Open-Meteo forecasts, and open-licensed Wikimedia hero photos (28/28), all attributed and freshness-gated. Discovery + search with the binding zero-result relaxation, a provenance-backed content model, ingestion + editorial publishing, Google auth + saved destinations, admin gated on `isAdmin`, AI-assisted drafting, ISR for published pages, vibe pills + split map + destination comparison, and rich trail pages (interactive elevation chart with chart↔map hover, weather, alerts) are live — 105 unit tests + 16 E2E (incl. axe accessibility) green, across 5 live sources (3 keyless, 2 keyed). What's left is editorial rubric sign-off, legal sign-off, and operational ownership — see [docs/launch-readiness.md](docs/launch-readiness.md). See [Status](#status) below.
 
 The name "Travel Roamer" is a candidate pending domain and trademark clearance (see the PRD's Product Name section) — it's used here as the working name, not a final decision.
 
@@ -18,7 +18,7 @@ An adventure discovery platform for outdoor travelers (backpackers, hikers, clim
 
 ## Status
 
-**The Phase 1 platform is built end-to-end (M0–M11)** — see [`docs/ROADMAP.md`](docs/ROADMAP.md) for the full sequence and current state. What works today:
+**The Phase 1 platform is built end-to-end (M0–M12)** — see [`docs/ROADMAP.md`](docs/ROADMAP.md) for the full sequence and current state. What works today:
 
 - **Home** → **Explore** (destination card grid, five facet filters, typo-tolerant keyword search) → **Destination** (hero, facts, MapLibre map, trail list, safety disclosure) → **Trail**.
 - **Zero-result relaxation**: an impossible filter combination relaxes the strictest constraint (budget → month → trip length → difficulty, never activity) with a transparent banner and removable chips, instead of a dead-end "no results" — a binding PRD behavior, covered by a Playwright test.
@@ -83,7 +83,7 @@ Full rationale for each choice is in [`ARCHITECTURE.md` → Key Technical Decisi
 |---|---|
 | [PRD v1.1](docs/Adventure_Discovery_PRD_v1.1.md) | Product spec — scope, data model, content trust, security, KPIs, launch gates. The binding source of truth. |
 | [Architecture](docs/ARCHITECTURE.md) | C4 diagrams, ERD, ingestion/auth/search flow, service boundaries, technical decisions. |
-| [Roadmap](docs/ROADMAP.md) | Phase 1 sequenced into engineering milestones (M0–M11), status, and the ADR tracker. |
+| [Roadmap](docs/ROADMAP.md) | Phase 1 sequenced into engineering milestones (M0–M12), status, and the ADR tracker. |
 | [Launch readiness](docs/launch-readiness.md) | Every PRD launch gate walked — built vs. blocking, with owners and next steps. |
 | [Security](docs/security.md) | Security & observability controls: built vs. parked operational items. |
 | [Dependencies](docs/DEPENDENCIES.md) | External setup only you can do — accounts, API keys, legal/business items — by milestone. |
@@ -93,4 +93,4 @@ The PRD's Documentation section anticipates a fuller `/docs` set (`deployment.md
 
 ## What's next
 
-The engineering platform is built (M0–M11). What remains is **not more application code** — it's real content, external service accounts, and human/legal sign-off. [`docs/launch-readiness.md`](docs/launch-readiness.md) walks every launch gate and lists the concrete next steps for a human (provision Supabase/R2/Vercel + the map tile provider, get source keys + legal review, build the real 25–50-destination corpus, stand up monitoring, legal deliverables, usability sessions).
+The engineering platform is built (M0–M12). What remains is **not more application code** — it's real content, external service accounts, and human/legal sign-off. [`docs/launch-readiness.md`](docs/launch-readiness.md) walks every launch gate and lists the concrete next steps for a human (provision Supabase/R2/Vercel + the map tile provider, get source keys + legal review, build the real 25–50-destination corpus, stand up monitoring, legal deliverables, usability sessions).
