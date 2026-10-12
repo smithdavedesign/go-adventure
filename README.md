@@ -94,3 +94,31 @@ The PRD's Documentation section anticipates a fuller `/docs` set (`deployment.md
 ## What's next
 
 The engineering platform is built (M0–M12). What remains is **not more application code** — it's real content, external service accounts, and human/legal sign-off. [`docs/launch-readiness.md`](docs/launch-readiness.md) walks every launch gate and lists the concrete next steps for a human (provision Supabase/R2/Vercel + the map tile provider, get source keys + legal review, build the real 25–50-destination corpus, stand up monitoring, legal deliverables, usability sessions).
+
+## Usage
+
+Available npm scripts:
+
+- `dev`: Start the development server at http://localhost:3000.
+- `build`: Build the application for production.
+- `start`: Start the production server (after building).
+- `lint`: Run ESLint to check for code errors.
+- `typecheck`: Run TypeScript compiler to check types.
+- `test`: Run Vitest unit tests.
+- `test:smoke`: Run the smoke test for platform integrations.
+- `test:watch`: Run Vitest in watch mode (for test development).
+- `test:e2e`: Run Playwright end-to-end tests (requires Docker and seeded DB).
+- `db:seed`: Seed the database with sample data (6 destinations and trails).
+- `db:reset`: Reset the database (drops and reapplies migrations).
+- `ingest:nps`: Fetch and draft NPS data (use `-- --fixture` for local fixture).
+- `forecasts:refresh`: Fetch live weather forecasts (Open-Meteo) and update destination pages.
+- `enrich:fees`: Enrich NPS fee data (from NPS API).
+- `enrich:media`: Enrich media from Wikimedia (hero photos).
+- `enrich:gallery`: Enrich gallery images (from Wikimedia).
+- `enrich:highlights`: Enrich highlights (textual highlights for destinations).
+- `enrich:elevation`: Enrich elevation profiles (from OpenTopoData or similar).
+- `set-admin`: Grant admin role to a Google account (by email): `npm run set-admin -- <email>`.
+- `alerts:refresh`: Fetch and update park alerts (from NPS).
+- `ingest:trails`: Ingest trail data from OpenStreetMap (OSM).
+- `postinstall`: Runs automatically after `npm install` to generate Prisma client and copy MapLibre worker.
+
